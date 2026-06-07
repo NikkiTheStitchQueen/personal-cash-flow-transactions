@@ -44,7 +44,7 @@ p {
 
 .screen {
   min-height: 100vh;
-  padding: 24px;
+  padding: 18px 24px 24px;
 }
 
 .app-header,
@@ -58,20 +58,20 @@ p {
 
 .app-header {
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  margin-bottom: 20px;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
 .eyebrow {
   color: var(--accent-strong);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
 }
 
 h1 {
-  margin-top: 4px;
-  font-size: 34px;
+  margin-top: 2px;
+  font-size: 24px;
   line-height: 1.05;
 }
 
@@ -88,13 +88,21 @@ h2 {
 }
 
 .toolbar {
-  grid-template-columns: 180px 220px minmax(220px, 1fr);
+  grid-template-columns: 180px 220px minmax(220px, 1fr) auto;
   margin-bottom: 16px;
   padding: 14px;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: var(--shadow);
+}
+
+.filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+  justify-content: flex-end;
 }
 
 label {
@@ -117,8 +125,12 @@ select {
 }
 
 .metric-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin-bottom: 16px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.bottom-stats {
+  margin-bottom: 0;
 }
 
 .metric,
@@ -187,7 +199,7 @@ select {
 
 table {
   width: 100%;
-  min-width: 1120px;
+  min-width: 1360px;
   border-collapse: collapse;
 }
 
@@ -226,7 +238,6 @@ td.actions-column {
 
 .primary-button,
 .ghost-button,
-.import-button,
 .delete-button,
 .save-button,
 .status {
@@ -250,15 +261,6 @@ td.actions-column {
   border-color: var(--accent);
   color: white;
   font-weight: 800;
-}
-
-.import-button {
-  display: block;
-  text-align: center;
-}
-
-.import-button input {
-  display: none;
 }
 
 .status {
@@ -305,6 +307,38 @@ td.actions-column {
 
 .amount-input {
   min-width: 96px;
+  text-align: right;
+}
+
+.validation-cell {
+  background: #fff0f0;
+  color: var(--danger);
+  font-weight: 800;
+}
+
+.cell-warning {
+  display: inline-block;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.form-error,
+.action-error {
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.form-error {
+  padding: 10px 12px;
+  border: 1px solid #efb5b5;
+  border-radius: 8px;
+  background: #fff0f0;
+}
+
+.action-error {
+  margin-top: 6px;
   text-align: right;
 }
 
@@ -370,7 +404,7 @@ td.actions-column {
 
 .account-strip {
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  margin-top: 16px;
+  margin-bottom: 16px;
 }
 
 .account-card {
@@ -392,6 +426,7 @@ td.actions-column {
 @media (max-width: 1080px) {
   .app-header {
     grid-template-columns: 1fr;
+    align-items: start;
   }
 
   .header-actions {
@@ -400,6 +435,14 @@ td.actions-column {
 
   .account-strip {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .metric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -413,5 +456,9 @@ td.actions-column {
   .field-grid,
   .account-strip {
     grid-template-columns: 1fr;
+  }
+
+  .filter-actions {
+    justify-content: stretch;
   }
 }

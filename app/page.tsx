@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type Transaction = {
   id: string;
@@ -9,6 +9,8 @@ type Transaction = {
   merchant: string;
   amount: number;
   category: string;
+  subcategory: string;
+  expenseType: string;
   account: string;
   paid: boolean;
   paidDate: string;
@@ -32,21 +34,30 @@ const accounts = [
   "Paypal"
 ];
 
-const categories = [
-  "Groceries",
-  "Dining",
-  "Gas",
-  "Utilities",
-  "Insurance",
-  "Mortgage",
-  "Nikki - Activities",
-  "Hudson - Activities",
-  "Hudson - After School Care",
-  "Entertainment",
-  "Income",
-  "Credit Card Payment",
-  "Savings Transfer"
-];
+const categorySubcategories: Record<string, string[]> = {
+  Income: ["Income"],
+  Bills: ["Car Insurance", "Insurance", "Mortgage", "Student Loans", "Utilities"],
+  Car: ["Lexus", "Toyota"],
+  Clothing: ["Holden", "Hudson", "Nikki", "Household"],
+  Entertainment: ["General", "Subscriptions"],
+  Fitness: ["General"],
+  Food: ["Dining & Misc Food", "Groceries"],
+  Gas: ["Vehicle Fuel"],
+  Gift: ["General"],
+  House: ["General"],
+  Activities: ["Holden", "Hudson", "Nikki"],
+  Childcare: ["Daycare", "After School"],
+  Medical: ["Holden", "Hudson", "Nikki"],
+  "Personal Care": ["General"],
+  Savings: ["General"],
+  Taxes: ["General"],
+  Tithe: ["General"],
+  Vacation: ["General"],
+  "Cash Withdrawal": ["General"]
+};
+
+const categories = Object.keys(categorySubcategories);
+const expenseTypes = ["Planned", "Necessary", "Regret", "Impulse"];
 
 const initialState: AppState = {
   activeMonth: currentMonth(),
@@ -60,6 +71,10 @@ export default function TransactionsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [addCategory, setAddCategory] = useState("Income");
+  const [showFilters, setShowFilters] = useState(false);
+  const [transactionError, setTransactionError] = useState("");
+  const [editingError, setEditingError] = useState("");
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -80,7 +95,7 @@ export default function TransactionsPage() {
   const visibleTransactions = state.transactions
     .filter((transaction) => transaction.payPeriod === state.activePayPeriod)
     .filter((transaction) =>
-      [transaction.merchant, transaction.category, transaction.account, transaction.notes]
+      [transaction.merchant, transaction.category, transaction.subcategory, transaction.expenseType, transaction.account, transaction.notes]
         .join(" ")
         .toLowerCase()
         .includes(search.toLowerCase())
@@ -92,6 +107,7 @@ export default function TransactionsPage() {
   const periodSpending = Math.abs(sum(periodTransactions.filter((transaction) => transaction.amount < 0)));
   const unpaidCount = periodTransactions.filter((transaction) => !transaction.paid).length;
   const netFlow = periodIncome - periodSpending;
+  const transactionCount = periodTransactions.length;
 
   const accountTotals = accounts.map((account) => {
     const accountTransactions = periodTransactions.filter((transaction) => transaction.account === account);
@@ -118,6 +134,14 @@ export default function TransactionsPage() {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const amount = Number(form.get("amount"));
+    const paid = form.get("paid") === "Yes";
+    const paidDate = String(form.get("paidDate") ?? "");
+
+    if (paid && !paidDate) {
+      setTransactionError("Paid transactions need a paid date.");
+      return;
+    }
+
     const transaction: Transaction = {
       id: crypto.randomUUID(),
       payPeriod: String(form.get("payPeriod")),
@@ -125,9 +149,11 @@ export default function TransactionsPage() {
       merchant: String(form.get("merchant")).trim(),
       amount,
       category: String(form.get("category")),
+      subcategory: String(form.get("subcategory")),
+      expenseType: String(form.get("expenseType") ?? ""),
       account: String(form.get("account")),
-      paid: form.get("paid") === "Yes",
-      paidDate: String(form.get("paidDate") ?? ""),
+      paid,
+      paidDate,
       notes: String(form.get("notes") ?? "").trim()
     };
 
@@ -136,6 +162,8 @@ export default function TransactionsPage() {
       transactions: [transaction, ...current.transactions]
     }));
     event.currentTarget.reset();
+    setAddCategory("Income");
+    setTransactionError("");
     setIsAddModalOpen(false);
   }
 
@@ -161,19 +189,37 @@ export default function TransactionsPage() {
   function startEditing(transaction: Transaction) {
     setEditingId(transaction.id);
     setEditingTransaction({ ...transaction });
+    setEditingError("");
   }
 
   function updateEditing<K extends keyof Transaction>(key: K, value: Transaction[K]) {
-    setEditingTransaction((current) => current ? { ...current, [key]: value } : current);
+    setEditingTransaction((current) => {
+      if (!current) return current;
+      if (key === "category") {
+        const category = String(value);
+        return {
+          ...current,
+          category,
+          subcategory: categorySubcategories[category]?.[0] ?? ""
+        };
+      }
+      return { ...current, [key]: value };
+    });
   }
 
   function cancelEditing() {
     setEditingId(null);
     setEditingTransaction(null);
+    setEditingError("");
   }
 
   function saveEditing() {
     if (!editingTransaction) return;
+    if (editingTransaction.paid && !editingTransaction.paidDate) {
+      setEditingError("Paid transactions need a paid date.");
+      return;
+    }
+
     updateState((current) => ({
       ...current,
       transactions: current.transactions.map((transaction) =>
@@ -188,25 +234,27 @@ export default function TransactionsPage() {
     updateState((current) => ({
       ...current,
       transactions: [
-        makeTransaction(`${month}-PP1`, `${month}-01`, "Paycheck", 3250, "Income", "Chase Checking", true),
-        makeTransaction(`${month}-PP1`, `${month}-01`, "Kroger", -82.13, "Groceries", "Sapphire", true),
-        makeTransaction(`${month}-PP1`, `${month}-02`, "Netflix", -15.99, "Entertainment", "Sapphire", false),
-        makeTransaction(`${month}-PP1`, `${month}-04`, "VZW", -130, "Utilities", "VZW", false),
-        makeTransaction(`${month}-PP2`, `${month}-16`, "Paycheck", 3250, "Income", "Chase Checking", true),
-        makeTransaction(`${month}-PP2`, `${month}-17`, "Mortgage", -1850, "Mortgage", "Chase Checking", false),
-        makeTransaction(`${month}-PP2`, `${month}-18`, "Kids Activities", -260, "Hudson - Activities", "Chase Checking", false)
+        makeTransaction(`${month}-PP1`, `${month}-01`, "Paycheck", 3250, "Income", "Income", "", "Chase Checking", true),
+        makeTransaction(`${month}-PP1`, `${month}-01`, "Kroger", -82.13, "Food", "Groceries", "Necessary", "Sapphire", true),
+        makeTransaction(`${month}-PP1`, `${month}-02`, "Netflix", -15.99, "Entertainment", "Subscriptions", "Planned", "Sapphire", false),
+        makeTransaction(`${month}-PP1`, `${month}-04`, "VZW", -130, "Bills", "Utilities", "Planned", "VZW", false),
+        makeTransaction(`${month}-PP2`, `${month}-16`, "Paycheck", 3250, "Income", "Income", "", "Chase Checking", true),
+        makeTransaction(`${month}-PP2`, `${month}-17`, "Mortgage", -1850, "Bills", "Mortgage", "Planned", "Chase Checking", false),
+        makeTransaction(`${month}-PP2`, `${month}-18`, "Kids Activities", -260, "Activities", "Hudson", "Planned", "Chase Checking", false)
       ]
     }));
   }
 
   function exportCsv() {
-    const header = ["Pay Period", "Date", "Merchant", "Amount", "Category", "Account", "Account Paid?", "Paid Date", "Notes"];
+    const header = ["Pay Period", "Date", "Merchant", "Amount", "Category", "Subcategory", "Type of Expense", "Account", "Account Paid?", "Paid Date", "Notes"];
     const rows = state.transactions.map((transaction) => [
       transaction.payPeriod,
       transaction.date,
       transaction.merchant,
       transaction.amount,
       transaction.category,
+      transaction.subcategory,
+      transaction.expenseType,
       transaction.account,
       transaction.paid ? "Yes" : "No",
       transaction.paidDate,
@@ -215,61 +263,51 @@ export default function TransactionsPage() {
     download("transactions.csv", [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\n"), "text/csv");
   }
 
-  function exportJson() {
-    download("transactions-backup.json", JSON.stringify(state, null, 2), "application/json");
-  }
-
-  function importJson(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setState(JSON.parse(String(reader.result)) as AppState);
-    };
-    reader.readAsText(file);
-  }
-
   return (
     <main className="screen">
       <header className="app-header">
         <div>
           <p className="eyebrow">Personal cash flow tracker</p>
-          <h1>Transactions</h1>
+          <h1>Spending Tracker</h1>
         </div>
         <div className="header-actions">
-          <button type="button" className="primary-button" onClick={() => setIsAddModalOpen(true)}>Add transaction</button>
-          <button type="button" className="ghost-button" onClick={loadExamples}>Load examples</button>
-          <button type="button" className="ghost-button" onClick={exportCsv}>Export CSV</button>
-          <button type="button" className="ghost-button" onClick={exportJson}>Backup JSON</button>
-          <label className="import-button">
-            Import JSON
-            <input type="file" accept="application/json" onChange={importJson} />
-          </label>
+          <button type="button" className="ghost-button" onClick={() => setShowFilters((current) => !current)}>
+            Search/Filter
+          </button>
         </div>
       </header>
 
-      <section className="toolbar" aria-label="Transaction controls">
-        <label>
-          Month
-          <input type="month" value={state.activeMonth} onChange={(event) => changeMonth(event.target.value)} />
-        </label>
-        <label>
-          Pay period
-          <select value={state.activePayPeriod} onChange={(event) => updateState((current) => ({ ...current, activePayPeriod: event.target.value }))}>
-            {payPeriods.map((period) => <option key={period} value={period}>{formatPayPeriod(period)}</option>)}
-          </select>
-        </label>
-        <label className="search-field">
-          Search
-          <input value={search} onChange={(event) => setSearch(event.target.value)} type="search" placeholder="Merchant, category, account, notes" />
-        </label>
-      </section>
+      {showFilters && (
+        <section className="toolbar" aria-label="Transaction controls">
+          <label>
+            Month
+            <input type="month" value={state.activeMonth} onChange={(event) => changeMonth(event.target.value)} />
+          </label>
+          <label>
+            Pay period
+            <select value={state.activePayPeriod} onChange={(event) => updateState((current) => ({ ...current, activePayPeriod: event.target.value }))}>
+              {payPeriods.map((period) => <option key={period} value={period}>{formatPayPeriod(period)}</option>)}
+            </select>
+          </label>
+          <label className="search-field">
+            Search
+            <input value={search} onChange={(event) => setSearch(event.target.value)} type="search" placeholder="Merchant, category, account, notes" />
+          </label>
+          <div className="filter-actions" aria-label="Data tools">
+            <button type="button" className="ghost-button" onClick={loadExamples}>Load examples</button>
+            <button type="button" className="ghost-button" onClick={exportCsv}>Export CSV</button>
+          </div>
+        </section>
+      )}
 
-      <section className="metric-grid" aria-label="Pay period summary">
-        <Metric label="Income" value={money(periodIncome)} tone="good" />
-        <Metric label="Spending" value={money(periodSpending)} tone="danger" />
-        <Metric label="Net flow" value={money(netFlow)} tone={netFlow >= 0 ? "good" : "danger"} />
-        <Metric label="Unpaid items" value={String(unpaidCount)} tone={unpaidCount ? "warn" : "good"} />
+      <section className="account-strip" aria-label="Account summary">
+        {accountTotals.map((item) => (
+          <article className="account-card" key={item.account}>
+            <strong>{item.account}</strong>
+            <span className={item.total < 0 ? "danger-text" : "good-text"}>{money(item.total)}</span>
+            <small>{item.unpaid} unpaid</small>
+          </article>
+        ))}
       </section>
 
       <section className="list-section">
@@ -290,6 +328,8 @@ export default function TransactionsPage() {
                   <th>Merchant</th>
                   <th>Amount</th>
                   <th>Category</th>
+                  <th>Subcategory</th>
+                  <th>Type</th>
                   <th>Account</th>
                   <th>Paid</th>
                   <th>Paid date</th>
@@ -302,6 +342,8 @@ export default function TransactionsPage() {
                   const isEditing = editingId === transaction.id && editingTransaction;
 
                   if (isEditing) {
+                    const hasPaidDateError = editingTransaction.paid && !editingTransaction.paidDate;
+
                     return (
                       <tr className="editing-row" key={transaction.id}>
                         <td>
@@ -318,6 +360,17 @@ export default function TransactionsPage() {
                           </select>
                         </td>
                         <td>
+                          <select className="table-input" value={editingTransaction.subcategory} onChange={(event) => updateEditing("subcategory", event.target.value)}>
+                            {(categorySubcategories[editingTransaction.category] ?? []).map((subcategory) => <option key={subcategory}>{subcategory}</option>)}
+                          </select>
+                        </td>
+                        <td>
+                          <select className="table-input" value={editingTransaction.expenseType} onChange={(event) => updateEditing("expenseType", event.target.value)}>
+                            <option value="">None</option>
+                            {expenseTypes.map((expenseType) => <option key={expenseType}>{expenseType}</option>)}
+                          </select>
+                        </td>
+                        <td>
                           <select className="table-input" value={editingTransaction.account} onChange={(event) => updateEditing("account", event.target.value)}>
                             {accounts.map((account) => <option key={account}>{account}</option>)}
                           </select>
@@ -328,17 +381,23 @@ export default function TransactionsPage() {
                             <option>No</option>
                           </select>
                         </td>
-                        <td><input className="table-input" type="date" value={editingTransaction.paidDate} onChange={(event) => updateEditing("paidDate", event.target.value)} /></td>
+                        <td className={hasPaidDateError ? "validation-cell" : ""}>
+                          <input className="table-input" type="date" value={editingTransaction.paidDate} onChange={(event) => updateEditing("paidDate", event.target.value)} />
+                          {hasPaidDateError && <span className="cell-warning">Required</span>}
+                        </td>
                         <td><input className="table-input" value={editingTransaction.notes} onChange={(event) => updateEditing("notes", event.target.value)} /></td>
                         <td className="actions-column">
                           <div className="row-actions">
                             <button type="button" className="save-button" onClick={saveEditing}>Save</button>
                             <button type="button" className="delete-button" onClick={cancelEditing}>Cancel</button>
                           </div>
+                          {editingError && <div className="action-error">{editingError}</div>}
                         </td>
                       </tr>
                     );
                   }
+
+                  const needsPaidDateReview = transaction.paid && !transaction.paidDate;
 
                   return (
                     <tr key={transaction.id}>
@@ -347,13 +406,17 @@ export default function TransactionsPage() {
                       <td>{transaction.merchant}</td>
                       <td className={transaction.amount < 0 ? "danger-text" : "good-text"}>{money(transaction.amount)}</td>
                       <td>{transaction.category}</td>
+                      <td>{transaction.subcategory}</td>
+                      <td>{transaction.expenseType}</td>
                       <td>{transaction.account}</td>
                       <td>
                         <button type="button" className={transaction.paid ? "status paid" : "status unpaid"} onClick={() => togglePaid(transaction.id)}>
                           {transaction.paid ? "Yes" : "No"}
                         </button>
                       </td>
-                      <td>{transaction.paidDate ? formatDate(transaction.paidDate) : ""}</td>
+                      <td className={needsPaidDateReview ? "validation-cell" : ""}>
+                        {transaction.paidDate ? formatDate(transaction.paidDate) : needsPaidDateReview ? <span className="cell-warning">Review</span> : ""}
+                      </td>
                       <td>{transaction.notes}</td>
                       <td className="actions-column">
                         <div className="row-actions">
@@ -365,13 +428,21 @@ export default function TransactionsPage() {
                   );
                 }) : (
                   <tr>
-                    <td colSpan={10}><div className="empty-state">No transactions for this pay period yet.</div></td>
+                    <td colSpan={12}><div className="empty-state">No transactions for this pay period yet.</div></td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
         </section>
+      </section>
+
+      <section className="metric-grid bottom-stats" aria-label="Pay period summary">
+        <Metric label="Income" value={money(periodIncome)} tone="good" />
+        <Metric label="Spending" value={money(periodSpending)} tone="danger" />
+        <Metric label="Net flow" value={money(netFlow)} tone={netFlow >= 0 ? "good" : "danger"} />
+        <Metric label="Unpaid items" value={String(unpaidCount)} tone={unpaidCount ? "warn" : "good"} />
+        <Metric label="Transactions" value={String(transactionCount)} tone="good" />
       </section>
 
       {isAddModalOpen && (
@@ -403,8 +474,21 @@ export default function TransactionsPage() {
                 </label>
                 <label>
                   Category
-                  <select name="category" required>
+                  <select name="category" value={addCategory} onChange={(event) => setAddCategory(event.target.value)} required>
                     {categories.map((category) => <option key={category}>{category}</option>)}
+                  </select>
+                </label>
+                <label>
+                  Subcategory
+                  <select name="subcategory" required>
+                    {categorySubcategories[addCategory].map((subcategory) => <option key={subcategory}>{subcategory}</option>)}
+                  </select>
+                </label>
+                <label>
+                  Type of expense
+                  <select name="expenseType">
+                    <option value="">None</option>
+                    {expenseTypes.map((expenseType) => <option key={expenseType}>{expenseType}</option>)}
                   </select>
                 </label>
                 <label>
@@ -429,6 +513,7 @@ export default function TransactionsPage() {
                   <input name="notes" type="text" placeholder="Optional" />
                 </label>
               </div>
+              {transactionError && <div className="form-error">{transactionError}</div>}
               <div className="modal-actions">
                 <button className="primary-button" type="submit">Save transaction</button>
                 <button className="ghost-button" type="button" onClick={() => setIsAddModalOpen(false)}>Cancel</button>
@@ -438,15 +523,6 @@ export default function TransactionsPage() {
         </div>
       )}
 
-      <section className="account-strip" aria-label="Account summary">
-        {accountTotals.map((item) => (
-          <article className="account-card" key={item.account}>
-            <strong>{item.account}</strong>
-            <span className={item.total < 0 ? "danger-text" : "good-text"}>{money(item.total)}</span>
-            <small>{item.unpaid} unpaid</small>
-          </article>
-        ))}
-      </section>
     </main>
   );
 }
@@ -466,6 +542,8 @@ function makeTransaction(
   merchant: string,
   amount: number,
   category: string,
+  subcategory: string,
+  expenseType: string,
   account: string,
   paid: boolean
 ): Transaction {
@@ -476,6 +554,8 @@ function makeTransaction(
     merchant,
     amount,
     category,
+    subcategory,
+    expenseType,
     account,
     paid,
     paidDate: paid ? date : "",
@@ -488,9 +568,40 @@ function normalizeState(state: AppState): AppState {
     ...state,
     transactions: state.transactions.map((transaction) => ({
       ...transaction,
+      ...normalizeCategory(transaction.category, transaction.subcategory),
+      expenseType: transaction.expenseType ?? "",
       paidDate: transaction.paidDate ?? ""
     }))
   };
+}
+
+function normalizeCategory(category: string, subcategory?: string) {
+  if (categorySubcategories[category]) {
+    return {
+      category,
+      subcategory: subcategory && categorySubcategories[category].includes(subcategory)
+        ? subcategory
+        : categorySubcategories[category][0]
+    };
+  }
+
+  const legacyMap: Record<string, { category: string; subcategory: string }> = {
+    Groceries: { category: "Food", subcategory: "Groceries" },
+    Dining: { category: "Food", subcategory: "Dining & Misc Food" },
+    Gas: { category: "Gas", subcategory: "Vehicle Fuel" },
+    Utilities: { category: "Bills", subcategory: "Utilities" },
+    Insurance: { category: "Bills", subcategory: "Insurance" },
+    Mortgage: { category: "Bills", subcategory: "Mortgage" },
+    Entertainment: { category: "Entertainment", subcategory: "General" },
+    Income: { category: "Income", subcategory: "Income" },
+    Savings: { category: "Savings", subcategory: "General" },
+    "Savings Transfer": { category: "Savings", subcategory: "General" },
+    "Nikki - Activities": { category: "Activities", subcategory: "Nikki" },
+    "Hudson - Activities": { category: "Activities", subcategory: "Hudson" },
+    "Hudson - After School Care": { category: "Childcare", subcategory: "After School" }
+  };
+
+  return legacyMap[category] ?? { category: "House", subcategory: "General" };
 }
 
 function buildPayPeriods(month: string) {
