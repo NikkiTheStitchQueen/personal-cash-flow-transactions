@@ -121,7 +121,7 @@ export default function TransactionsPage() {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
-  const [addCategory, setAddCategory] = useState("Income");
+  const [addCategory, setAddCategory] = useState("");
   const [recurringCategory, setRecurringCategory] = useState("Income");
   const [showFilters, setShowFilters] = useState(false);
   const [transactionError, setTransactionError] = useState("");
@@ -190,17 +190,13 @@ export default function TransactionsPage() {
     const form = new FormData(event.currentTarget);
     const amount = Number(form.get("amount"));
     const paid = form.get("paid") === "Yes";
-    const paidDate = String(form.get("paidDate") ?? "");
-
-    if (paid && !paidDate) {
-      setTransactionError("Paid transactions need a paid date.");
-      return;
-    }
+    const transactionDate = String(form.get("date"));
+    const paidDate = paid ? transactionDate : "";
 
     const transaction: Transaction = {
       id: crypto.randomUUID(),
       payPeriod: String(form.get("payPeriod")),
-      date: String(form.get("date")),
+      date: transactionDate,
       merchant: String(form.get("merchant")).trim(),
       amount,
       category: String(form.get("category")),
@@ -217,7 +213,7 @@ export default function TransactionsPage() {
       transactions: [transaction, ...current.transactions]
     }));
     event.currentTarget.reset();
-    setAddCategory("Income");
+    setAddCategory("");
     setTransactionError("");
     if (!saveAndAddAnother) {
       setIsAddModalOpen(false);
@@ -402,6 +398,7 @@ export default function TransactionsPage() {
           <h1>Spending Tracker</h1>
         </div>
         <div className="header-actions">
+          <button type="button" className="primary-button quick-add-button" onClick={() => setIsAddModalOpen(true)}>Add transaction</button>
           <label className="compact-field">
             Pay period
             <select value={state.activePayPeriod} onChange={(event) => updateState((current) => ({ ...current, activePayPeriod: event.target.value }))}>
@@ -451,7 +448,6 @@ export default function TransactionsPage() {
             </div>
             <div className="panel-actions">
               <button type="button" className="ghost-button" onClick={() => setIsRecurringModalOpen(true)}>Recurring</button>
-              <button type="button" className="primary-button" onClick={() => setIsAddModalOpen(true)}>Add transaction</button>
             </div>
           </div>
           <div className="table-wrap">
@@ -593,8 +589,8 @@ export default function TransactionsPage() {
               <h2 id="add-transaction-title">Add transaction</h2>
               <button type="button" className="delete-button" onClick={() => setIsAddModalOpen(false)}>x</button>
             </div>
-            <form className="entry-panel modal-form" onSubmit={addTransaction}>
-              <div className="field-grid">
+            <form className="entry-panel modal-form add-transaction-form" onSubmit={addTransaction}>
+              <div className="field-grid add-transaction-grid">
                 <label>
                   Pay period
                   <select name="payPeriod" defaultValue={state.activePayPeriod} required>
@@ -616,13 +612,15 @@ export default function TransactionsPage() {
                 <label>
                   Category
                   <select name="category" value={addCategory} onChange={(event) => setAddCategory(event.target.value)} required>
+                    <option value="">Select category</option>
                     {categories.map((category) => <option key={category}>{category}</option>)}
                   </select>
                 </label>
                 <label>
                   Subcategory
-                  <select name="subcategory" required>
-                    {categorySubcategories[addCategory].map((subcategory) => <option key={subcategory}>{subcategory}</option>)}
+                  <select key={addCategory} name="subcategory" defaultValue="" required disabled={!addCategory}>
+                    <option value="">Select subcategory</option>
+                    {(categorySubcategories[addCategory] ?? []).map((subcategory) => <option key={subcategory}>{subcategory}</option>)}
                   </select>
                 </label>
                 <label>
@@ -634,20 +632,17 @@ export default function TransactionsPage() {
                 </label>
                 <label>
                   Account
-                  <select name="account" required>
+                  <select name="account" defaultValue="" required>
+                    <option value="">Select account</option>
                     {accounts.map((account) => <option key={account}>{account}</option>)}
                   </select>
                 </label>
                 <label>
                   Account paid?
-                  <select name="paid" required>
-                    <option>Yes</option>
+                  <select name="paid" defaultValue="No" required>
                     <option>No</option>
+                    <option>Yes</option>
                   </select>
-                </label>
-                <label>
-                  Paid date
-                  <input name="paidDate" type="date" />
                 </label>
                 <label className="span-2">
                   Notes

@@ -88,6 +88,10 @@ h2 {
   justify-content: flex-end;
 }
 
+.quick-add-button {
+  min-height: 40px;
+}
+
 .toolbar {
   grid-template-columns: 180px minmax(220px, 1fr) auto;
   margin-bottom: 16px;
@@ -433,6 +437,10 @@ td.actions-column {
   justify-content: flex-end;
 }
 
+.add-transaction-form {
+  padding-top: 14px;
+}
+
 .recurring-content {
   display: grid;
   gap: 16px;
@@ -551,7 +559,7 @@ td.actions-column {
 
 @media (max-width: 760px) {
   .screen {
-    padding: 16px;
+    padding: 12px;
   }
 
   .toolbar,
@@ -561,7 +569,44 @@ td.actions-column {
     grid-template-columns: 1fr;
   }
 
+  .app-header {
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .header-actions {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    width: 100%;
+    align-items: end;
+  }
+
+  .quick-add-button {
+    grid-column: 1 / -1;
+    min-height: 48px;
+    font-size: 16px;
+  }
+
+  .compact-field {
+    width: 100%;
+  }
+
   .filter-actions {
+    justify-content: stretch;
+  }
+
+  .filter-actions > button,
+  .panel-actions > button {
+    flex: 1 1 140px;
+  }
+
+  .panel-heading {
+    align-items: stretch;
+    gap: 12px;
+    flex-direction: column;
+  }
+
+  .panel-actions {
     justify-content: stretch;
   }
 
@@ -569,5 +614,61 @@ td.actions-column {
     width: 36px;
     min-width: 36px;
     padding: 7px;
+  }
+
+  .modal-backdrop {
+    align-items: end;
+    place-items: end stretch;
+    padding: 0;
+  }
+
+  .modal-panel {
+    width: 100%;
+    max-height: 100dvh;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 8px 8px 0 0;
+  }
+
+  .modal-heading {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 14px 14px 10px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .modal-form {
+    padding: 14px;
+  }
+
+  .add-transaction-grid {
+    gap: 10px;
+  }
+
+  .add-transaction-grid .span-2 {
+    grid-column: auto;
+  }
+
+  .modal-form input,
+  .modal-form select {
+    min-height: 46px;
+    font-size: 16px;
+  }
+
+  .modal-actions {
+    position: sticky;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    padding-top: 12px;
+    background: var(--panel);
+  }
+
+  .modal-actions > button {
+    width: 100%;
+    min-height: 46px;
   }
 }
