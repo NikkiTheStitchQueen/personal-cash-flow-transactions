@@ -160,7 +160,7 @@ select {
 }
 
 .metric-grid {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   margin-top: 16px;
 }
 
@@ -241,7 +241,7 @@ select {
 
 table {
   width: 100%;
-  min-width: 1360px;
+  min-width: 980px;
   border-collapse: collapse;
 }
 
@@ -260,8 +260,8 @@ th {
   text-transform: uppercase;
 }
 
-th:nth-child(4),
-td:nth-child(4) {
+th:nth-child(3),
+td:nth-child(3) {
   text-align: right;
 }
 
@@ -269,8 +269,8 @@ td:nth-child(4) {
   position: sticky;
   right: 0;
   z-index: 2;
-  width: 124px;
-  min-width: 124px;
+  width: 168px;
+  min-width: 168px;
   background: var(--panel);
 }
 
@@ -362,6 +362,60 @@ td.actions-column {
   flex-wrap: wrap;
   gap: 6px;
   justify-content: flex-end;
+}
+
+.transaction-detail-menu {
+  position: relative;
+}
+
+.transaction-detail-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 4;
+  width: 240px;
+  padding: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  white-space: normal;
+}
+
+.transaction-detail-panel dl,
+.transaction-detail-panel dd {
+  margin: 0;
+}
+
+.transaction-detail-panel dl {
+  display: grid;
+  gap: 10px;
+}
+
+.transaction-detail-panel div {
+  display: grid;
+  gap: 2px;
+}
+
+.transaction-detail-panel dt,
+.row-detail-fields label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.transaction-detail-panel dd {
+  color: var(--ink);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.row-detail-fields {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 8px;
+  text-align: left;
 }
 
 .editing-row {

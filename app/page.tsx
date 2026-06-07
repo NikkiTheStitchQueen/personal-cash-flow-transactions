@@ -74,6 +74,7 @@ const categorySubcategories: Record<string, string[]> = {
 
 const categories = Object.keys(categorySubcategories);
 const expenseTypes = ["Planned", "Necessary", "Regret", "Impulse", "Worth It"];
+const startingBalance = -642.74;
 
 const defaultRecurringExpenses: RecurringExpense[] = [
   recurring("PP1", "Netrist Paycheck", 2986.2, "Income", "Income", "Chase Checking"),
@@ -128,6 +129,7 @@ export default function TransactionsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showMobileSummary, setShowMobileSummary] = useState(false);
+  const [openTransactionDetailsId, setOpenTransactionDetailsId] = useState<string | null>(null);
   const [transactionError, setTransactionError] = useState("");
   const [editingError, setEditingError] = useState("");
   const [hydrated, setHydrated] = useState(false);
@@ -204,7 +206,7 @@ export default function TransactionsPage() {
         .toLowerCase()
         .includes(search.toLowerCase())
     )
-    .sort((a, b) => b.date.localeCompare(a.date));
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   const periodTransactions = state.transactions.filter((transaction) => transaction.payPeriod === state.activePayPeriod);
   const periodIncome = sum(periodTransactions.filter((transaction) => transaction.amount > 0));
@@ -212,6 +214,7 @@ export default function TransactionsPage() {
   const periodSpending = Math.abs(sum(periodTransactions.filter((transaction) => transaction.amount < 0 && transaction.expenseType !== "Planned")));
   const unpaidCount = periodTransactions.filter((transaction) => !transaction.paid).length;
   const transactionCount = periodTransactions.length;
+  const balance = startingBalance + sum(state.transactions);
 
   const accountTotals = accounts.map((account) => {
     const accountTransactions = periodTransactions.filter((transaction) => transaction.account === account);
@@ -532,17 +535,13 @@ export default function TransactionsPage() {
             <table>
               <thead>
                 <tr>
-                  <th>Pay period</th>
                   <th>Date</th>
                   <th>Merchant</th>
                   <th>Amount</th>
                   <th>Category</th>
                   <th>Subcategory</th>
-                  <th>Type</th>
                   <th>Account</th>
                   <th>Paid</th>
-                  <th>Paid date</th>
-                  <th>Notes</th>
                   <th className="actions-column">Actions</th>
                 </tr>
               </thead>
@@ -555,11 +554,6 @@ export default function TransactionsPage() {
 
                     return (
                       <tr className="editing-row" key={transaction.id}>
-                        <td>
-                          <select className="table-input" value={editingTransaction.payPeriod} onChange={(event) => updateEditing("payPeriod", event.target.value)}>
-                            {payPeriods.map((period) => <option key={period} value={period}>{formatPayPeriod(period)}</option>)}
-                          </select>
-                        </td>
                         <td><input className="table-input" type="date" value={editingTransaction.date} onChange={(event) => updateEditing("date", event.target.value)} /></td>
                         <td><input className="table-input" value={editingTransaction.merchant} onChange={(event) => updateEditing("merchant", event.target.value)} /></td>
                         <td><input className="table-input amount-input" type="number" step="0.01" value={editingTransaction.amount} onChange={(event) => updateEditing("amount", Number(event.target.value))} /></td>
@@ -574,12 +568,6 @@ export default function TransactionsPage() {
                           </select>
                         </td>
                         <td>
-                          <select className="table-input" value={editingTransaction.expenseType} onChange={(event) => updateEditing("expenseType", event.target.value)}>
-                            <option value="">None</option>
-                            {expenseTypes.map((expenseType) => <option key={expenseType}>{expenseType}</option>)}
-                          </select>
-                        </td>
-                        <td>
                           <select className="table-input" value={editingTransaction.account} onChange={(event) => updateEditing("account", event.target.value)}>
                             {accounts.map((account) => <option key={account}>{account}</option>)}
                           </select>
@@ -590,12 +578,25 @@ export default function TransactionsPage() {
                             <option>No</option>
                           </select>
                         </td>
-                        <td className={hasPaidDateError ? "validation-cell" : ""}>
-                          <input className="table-input" type="date" value={editingTransaction.paidDate} onChange={(event) => updateEditing("paidDate", event.target.value)} />
-                          {hasPaidDateError && <span className="cell-warning">Required</span>}
-                        </td>
-                        <td><input className="table-input" value={editingTransaction.notes} onChange={(event) => updateEditing("notes", event.target.value)} /></td>
                         <td className="actions-column">
+                          <div className="row-detail-fields">
+                            <label>
+                              Type
+                              <select className="table-input" value={editingTransaction.expenseType} onChange={(event) => updateEditing("expenseType", event.target.value)}>
+                                <option value="">None</option>
+                                {expenseTypes.map((expenseType) => <option key={expenseType}>{expenseType}</option>)}
+                              </select>
+                            </label>
+                            <label className={hasPaidDateError ? "validation-cell" : ""}>
+                              Paid date
+                              <input className="table-input" type="date" value={editingTransaction.paidDate} onChange={(event) => updateEditing("paidDate", event.target.value)} />
+                              {hasPaidDateError && <span className="cell-warning">Required</span>}
+                            </label>
+                            <label>
+                              Notes
+                              <input className="table-input" value={editingTransaction.notes} onChange={(event) => updateEditing("notes", event.target.value)} />
+                            </label>
+                          </div>
                           <div className="row-actions">
                             <button type="button" className="icon-button save-icon-button" aria-label="Save transaction" title="Save" onClick={saveEditing}>
                               <CheckIcon />
@@ -611,28 +612,55 @@ export default function TransactionsPage() {
                   }
 
                   const needsPaidDateReview = transaction.paid && !transaction.paidDate;
+                  const isDetailsOpen = openTransactionDetailsId === transaction.id;
 
                   return (
                     <tr key={transaction.id}>
-                      <td>{formatPayPeriod(transaction.payPeriod)}</td>
                       <td>{formatDate(transaction.date)}</td>
                       <td>{transaction.merchant}</td>
                       <td className={transaction.amount < 0 ? "danger-text" : "good-text"}>{money(transaction.amount)}</td>
                       <td>{transaction.category}</td>
                       <td>{transaction.subcategory}</td>
-                      <td>{transaction.expenseType}</td>
                       <td>{transaction.account}</td>
                       <td>
                         <button type="button" className={transaction.paid ? "status paid" : "status unpaid"} onClick={() => togglePaid(transaction.id)}>
                           {transaction.paid ? "Yes" : "No"}
                         </button>
                       </td>
-                      <td className={needsPaidDateReview ? "validation-cell" : ""}>
-                        {transaction.paidDate ? formatDate(transaction.paidDate) : needsPaidDateReview ? <span className="cell-warning">Review</span> : ""}
-                      </td>
-                      <td>{transaction.notes}</td>
                       <td className="actions-column">
                         <div className="row-actions">
+                          <div className="transaction-detail-menu">
+                            <button
+                              type="button"
+                              className="icon-button"
+                              aria-label={`More details for ${transaction.merchant}`}
+                              title="More details"
+                              aria-expanded={isDetailsOpen}
+                              onClick={() => setOpenTransactionDetailsId((current) => current === transaction.id ? null : transaction.id)}
+                            >
+                              <DotsIcon />
+                            </button>
+                            {isDetailsOpen && (
+                              <div className="transaction-detail-panel">
+                                <dl>
+                                  <div>
+                                    <dt>Type</dt>
+                                    <dd>{transaction.expenseType || "None"}</dd>
+                                  </div>
+                                  <div>
+                                    <dt>Paid date</dt>
+                                    <dd className={needsPaidDateReview ? "danger-text" : ""}>
+                                      {transaction.paidDate ? formatDate(transaction.paidDate) : needsPaidDateReview ? "Review" : "None"}
+                                    </dd>
+                                  </div>
+                                  <div>
+                                    <dt>Notes</dt>
+                                    <dd>{transaction.notes || "None"}</dd>
+                                  </div>
+                                </dl>
+                              </div>
+                            )}
+                          </div>
                           <button type="button" className="icon-button" aria-label="Edit transaction" title="Edit" onClick={() => startEditing(transaction)}>
                             <PencilIcon />
                           </button>
@@ -643,7 +671,7 @@ export default function TransactionsPage() {
                   );
                 }) : (
                   <tr>
-                    <td colSpan={12}><div className="empty-state">No transactions for this pay period yet.</div></td>
+                    <td colSpan={8}><div className="empty-state">No transactions for this pay period yet.</div></td>
                   </tr>
                 )}
               </tbody>
@@ -658,6 +686,7 @@ export default function TransactionsPage() {
         <Metric label="Spending" value={money(periodSpending)} tone="danger" />
         <Metric label="Unpaid items" value={String(unpaidCount)} tone={unpaidCount ? "warn" : "good"} />
         <Metric label="Total transactions" value={String(transactionCount)} tone="good" />
+        <Metric label="Balance" value={money(balance)} tone={balance >= 0 ? "good" : "danger"} />
       </section>
 
       {isAddModalOpen && (
