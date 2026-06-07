@@ -12,6 +12,8 @@ This is the reset version of the personal cash flow app. It intentionally contai
 - Positive amounts for income and negative amounts for spending
 - Account paid status and paid date tracking
 - Validation that paid transactions include a paid date
+- Recurring expense templates assigned to PP1 or PP2
+- Copy recurring items for the active pay period into transactions
 - Search, period totals, account summaries
 - CSV export
 - Browser local storage for private local-first data

@@ -17,10 +17,24 @@ type Transaction = {
   notes: string;
 };
 
+type PayPeriodSlot = "PP1" | "PP2";
+
+type RecurringExpense = {
+  id: string;
+  periodSlot: PayPeriodSlot;
+  merchant: string;
+  amount: number;
+  category: string;
+  subcategory: string;
+  expenseType: string;
+  account: string;
+};
+
 type AppState = {
   activeMonth: string;
   activePayPeriod: string;
   transactions: Transaction[];
+  recurringExpenses: RecurringExpense[];
 };
 
 const STORAGE_KEY = "personal-cash-flow-transactions-v1";
@@ -59,10 +73,45 @@ const categorySubcategories: Record<string, string[]> = {
 const categories = Object.keys(categorySubcategories);
 const expenseTypes = ["Planned", "Necessary", "Regret", "Impulse", "Worth It"];
 
+const defaultRecurringExpenses: RecurringExpense[] = [
+  recurring("PP1", "Netrist Paycheck", 2986.2, "Income", "Income", "", "Chase Checking"),
+  recurring("PP1", "Realtracs Paycheck", 3622.26, "Income", "Income", "", "Chase Checking"),
+  recurring("PP1", "Realtracs Paycheck", 157.5, "Income", "Income", "", "Chase Checking"),
+  recurring("PP1", "Tithe", -500, "Tithe", "General", "Planned", "Chase Checking"),
+  recurring("PP1", "Mortgage", -2294.45, "Bills", "Mortgage", "Planned", "Chase Checking"),
+  recurring("PP1", "Northwestern", -54.35, "Bills", "Insurance", "Planned", "Chase Checking"),
+  recurring("PP1", "Hudson - Afterschool", 90, "Childcare", "After School", "", "Chase Checking"),
+  recurring("PP1", "Hudson - Afterschool", -90, "Childcare", "After School", "Planned", "Chase Checking"),
+  recurring("PP1", "Geico", -760.26, "Bills", "Car Insurance", "Planned", "Chase Checking"),
+  recurring("PP1", "Audible", -16.37, "Entertainment", "Subscriptions", "Planned", "Amazon"),
+  recurring("PP1", "Disney Plus", -21.89, "Entertainment", "Subscriptions", "Planned", "Sapphire"),
+  recurring("PP1", "Pay Down Lexus", -700, "Car", "Lexus", "Planned", "Chase Checking"),
+  recurring("PP1", "Gracie Barra Tuition", -81, "Activities", "Hudson", "Planned", "Chase Checking"),
+  recurring("PP2", "Tithe", -500, "Tithe", "General", "Planned", "Chase Checking"),
+  recurring("PP2", "Banner Insurance", -31.4, "Bills", "Insurance", "Planned", "Chase Checking"),
+  recurring("PP2", "Holden Insurance", -45.12, "Bills", "Insurance", "Planned", "Chase Checking"),
+  recurring("PP2", "Pay Down Lexus", -1500, "Car", "Lexus", "Planned", "Chase Checking"),
+  recurring("PP2", "Car Payment", -683.61, "Car", "Lexus", "Planned", "Chase Checking"),
+  recurring("PP2", "NES", -191, "Bills", "Utilities", "Planned", "Chase Checking"),
+  recurring("PP2", "Comcast", -161.92, "Bills", "Utilities", "Planned", "Sapphire"),
+  recurring("PP2", "Piedmont", -63, "Bills", "Utilities", "Planned", "Chase Checking"),
+  recurring("PP2", "Water", -24.09, "Bills", "Utilities", "Planned", "Chase Checking"),
+  recurring("PP2", "Verizon", -244, "Bills", "Utilities", "Planned", "VZW"),
+  recurring("PP2", "Hudson - After School - 6/12", -90, "Childcare", "After School", "Planned", "Chase Checking"),
+  recurring("PP2", "Hudson - After School - 6/12", -90, "Childcare", "After School", "Planned", "Chase Checking"),
+  recurring("PP2", "JMI - Alexandra Sponsorship - 3/28", -41.3, "Gift", "General", "Planned", "Chase Checking"),
+  recurring("PP2", "Youtube Premium", -29.55, "Entertainment", "Subscriptions", "Planned", "Amazon"),
+  recurring("PP2", "ChatGPT", -21.95, "Entertainment", "Subscriptions", "Planned", "Sapphire"),
+  recurring("PP2", "Rene - Student Loans", -600, "Bills", "Student Loans", "Planned", "Chase Checking"),
+  recurring("PP2", "Gracie Barra Tuition - 6/9", -81, "Activities", "Hudson", "Planned", "Chase Checking"),
+  recurring("PP2", "Gracie Barra Tuition - 6/23", -81, "Activities", "Hudson", "Planned", "Chase Checking")
+];
+
 const initialState: AppState = {
   activeMonth: currentMonth(),
   activePayPeriod: `${currentMonth()}-PP1`,
-  transactions: []
+  transactions: [],
+  recurringExpenses: defaultRecurringExpenses
 };
 
 export default function TransactionsPage() {
@@ -71,7 +120,9 @@ export default function TransactionsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
   const [addCategory, setAddCategory] = useState("Income");
+  const [recurringCategory, setRecurringCategory] = useState("Income");
   const [showFilters, setShowFilters] = useState(false);
   const [transactionError, setTransactionError] = useState("");
   const [editingError, setEditingError] = useState("");
@@ -92,6 +143,8 @@ export default function TransactionsPage() {
   }, [hydrated, state]);
 
   const payPeriods = useMemo(() => buildPayPeriods(state.activeMonth), [state.activeMonth]);
+  const activePeriodSlot = state.activePayPeriod.endsWith("PP2") ? "PP2" : "PP1";
+  const activeRecurringExpenses = state.recurringExpenses.filter((expense) => expense.periodSlot === activePeriodSlot);
   const visibleTransactions = state.transactions
     .filter((transaction) => transaction.payPeriod === state.activePayPeriod)
     .filter((transaction) =>
@@ -233,6 +286,80 @@ export default function TransactionsPage() {
     cancelEditing();
   }
 
+  function addRecurringExpense(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const expense: RecurringExpense = {
+      id: crypto.randomUUID(),
+      periodSlot: String(form.get("periodSlot")) as PayPeriodSlot,
+      merchant: String(form.get("merchant")).trim(),
+      amount: Number(form.get("amount")),
+      category: String(form.get("category")),
+      subcategory: String(form.get("subcategory")),
+      expenseType: String(form.get("expenseType") ?? ""),
+      account: String(form.get("account"))
+    };
+
+    updateState((current) => ({
+      ...current,
+      recurringExpenses: [...current.recurringExpenses, expense]
+    }));
+    event.currentTarget.reset();
+    setRecurringCategory("Income");
+  }
+
+  function updateRecurringExpense<K extends keyof RecurringExpense>(id: string, key: K, value: RecurringExpense[K]) {
+    updateState((current) => ({
+      ...current,
+      recurringExpenses: current.recurringExpenses.map((expense) => {
+        if (expense.id !== id) return expense;
+        if (key === "category") {
+          const category = String(value);
+          return {
+            ...expense,
+            category,
+            subcategory: categorySubcategories[category]?.[0] ?? ""
+          };
+        }
+        return { ...expense, [key]: value };
+      })
+    }));
+  }
+
+  function deleteRecurringExpense(id: string) {
+    updateState((current) => ({
+      ...current,
+      recurringExpenses: current.recurringExpenses.filter((expense) => expense.id !== id)
+    }));
+  }
+
+  function addRecurringToActivePayPeriod() {
+    const transactionDate = defaultDateForPayPeriod(state.activePayPeriod);
+    const transactions = activeRecurringExpenses.map((expense) => {
+      const paid = expense.amount > 0;
+      return {
+        id: crypto.randomUUID(),
+        payPeriod: state.activePayPeriod,
+        date: transactionDate,
+        merchant: expense.merchant,
+        amount: expense.amount,
+        category: expense.category,
+        subcategory: expense.subcategory,
+        expenseType: expense.expenseType,
+        account: expense.account,
+        paid,
+        paidDate: paid ? transactionDate : "",
+        notes: "Recurring"
+      };
+    });
+
+    updateState((current) => ({
+      ...current,
+      transactions: [...transactions, ...current.transactions]
+    }));
+    setIsRecurringModalOpen(false);
+  }
+
   function loadExamples() {
     const month = state.activeMonth;
     updateState((current) => ({
@@ -322,7 +449,10 @@ export default function TransactionsPage() {
               <h2>{formatPayPeriod(state.activePayPeriod)}</h2>
               <p>{visibleTransactions.length} transactions shown</p>
             </div>
-            <button type="button" className="primary-button" onClick={() => setIsAddModalOpen(true)}>Add transaction</button>
+            <div className="panel-actions">
+              <button type="button" className="ghost-button" onClick={() => setIsRecurringModalOpen(true)}>Recurring</button>
+              <button type="button" className="primary-button" onClick={() => setIsAddModalOpen(true)}>Add transaction</button>
+            </div>
           </div>
           <div className="table-wrap">
             <table>
@@ -535,6 +665,123 @@ export default function TransactionsPage() {
         </div>
       )}
 
+      {isRecurringModalOpen && (
+        <div className="modal-backdrop" role="presentation">
+          <section className="modal-panel wide-modal" role="dialog" aria-modal="true" aria-labelledby="recurring-title">
+            <div className="modal-heading">
+              <div>
+                <h2 id="recurring-title">Recurring expenses</h2>
+                <p>{activeRecurringExpenses.length} items for {activePeriodSlot}</p>
+              </div>
+              <button type="button" className="delete-button" onClick={() => setIsRecurringModalOpen(false)}>x</button>
+            </div>
+
+            <div className="recurring-content">
+              <div className="recurring-toolbar">
+                <button type="button" className="primary-button" onClick={addRecurringToActivePayPeriod}>
+                  Add {activePeriodSlot} recurring to transactions
+                </button>
+              </div>
+
+              <div className="recurring-list">
+                {state.recurringExpenses.map((expense) => (
+                  <article className="recurring-row" key={expense.id}>
+                    <label>
+                      Period
+                      <select value={expense.periodSlot} onChange={(event) => updateRecurringExpense(expense.id, "periodSlot", event.target.value as PayPeriodSlot)}>
+                        <option value="PP1">PP1</option>
+                        <option value="PP2">PP2</option>
+                      </select>
+                    </label>
+                    <label>
+                      Name
+                      <input value={expense.merchant} onChange={(event) => updateRecurringExpense(expense.id, "merchant", event.target.value)} />
+                    </label>
+                    <label>
+                      Amount
+                      <input type="number" step="0.01" value={expense.amount} onChange={(event) => updateRecurringExpense(expense.id, "amount", Number(event.target.value))} />
+                    </label>
+                    <label>
+                      Category
+                      <select value={expense.category} onChange={(event) => updateRecurringExpense(expense.id, "category", event.target.value)}>
+                        {categories.map((category) => <option key={category}>{category}</option>)}
+                      </select>
+                    </label>
+                    <label>
+                      Subcategory
+                      <select value={expense.subcategory} onChange={(event) => updateRecurringExpense(expense.id, "subcategory", event.target.value)}>
+                        {(categorySubcategories[expense.category] ?? []).map((subcategory) => <option key={subcategory}>{subcategory}</option>)}
+                      </select>
+                    </label>
+                    <label>
+                      Type
+                      <select value={expense.expenseType} onChange={(event) => updateRecurringExpense(expense.id, "expenseType", event.target.value)}>
+                        <option value="">None</option>
+                        {expenseTypes.map((expenseType) => <option key={expenseType}>{expenseType}</option>)}
+                      </select>
+                    </label>
+                    <label>
+                      Account
+                      <select value={expense.account} onChange={(event) => updateRecurringExpense(expense.id, "account", event.target.value)}>
+                        {accounts.map((account) => <option key={account}>{account}</option>)}
+                      </select>
+                    </label>
+                    <button type="button" className="delete-button recurring-delete" onClick={() => deleteRecurringExpense(expense.id)}>x</button>
+                  </article>
+                ))}
+              </div>
+
+              <form className="recurring-add-form" onSubmit={addRecurringExpense}>
+                <h3>Add recurring item</h3>
+                <div className="field-grid">
+                  <label>
+                    Period
+                    <select name="periodSlot" defaultValue={activePeriodSlot}>
+                      <option value="PP1">PP1</option>
+                      <option value="PP2">PP2</option>
+                    </select>
+                  </label>
+                  <label>
+                    Name
+                    <input name="merchant" required />
+                  </label>
+                  <label>
+                    Amount
+                    <input name="amount" type="number" step="0.01" required />
+                  </label>
+                  <label>
+                    Category
+                    <select name="category" value={recurringCategory} onChange={(event) => setRecurringCategory(event.target.value)} required>
+                      {categories.map((category) => <option key={category}>{category}</option>)}
+                    </select>
+                  </label>
+                  <label>
+                    Subcategory
+                    <select name="subcategory" required>
+                      {categorySubcategories[recurringCategory].map((subcategory) => <option key={subcategory}>{subcategory}</option>)}
+                    </select>
+                  </label>
+                  <label>
+                    Type
+                    <select name="expenseType">
+                      <option value="">None</option>
+                      {expenseTypes.map((expenseType) => <option key={expenseType}>{expenseType}</option>)}
+                    </select>
+                  </label>
+                  <label>
+                    Account
+                    <select name="account" required>
+                      {accounts.map((account) => <option key={account}>{account}</option>)}
+                    </select>
+                  </label>
+                </div>
+                <button className="primary-button" type="submit">Save recurring item</button>
+              </form>
+            </div>
+          </section>
+        </div>
+      )}
+
     </main>
   );
 }
@@ -620,6 +867,27 @@ function makeTransaction(
   };
 }
 
+function recurring(
+  periodSlot: PayPeriodSlot,
+  merchant: string,
+  amount: number,
+  category: string,
+  subcategory: string,
+  expenseType: string,
+  account: string
+): RecurringExpense {
+  return {
+    id: crypto.randomUUID(),
+    periodSlot,
+    merchant,
+    amount,
+    category,
+    subcategory,
+    expenseType,
+    account
+  };
+}
+
 function normalizeState(state: AppState): AppState {
   return {
     ...state,
@@ -628,6 +896,13 @@ function normalizeState(state: AppState): AppState {
       ...normalizeCategory(transaction.category, transaction.subcategory),
       expenseType: transaction.expenseType ?? "",
       paidDate: transaction.paidDate ?? ""
+    })),
+    recurringExpenses: (state.recurringExpenses ?? defaultRecurringExpenses).map((expense) => ({
+      ...expense,
+      ...normalizeCategory(expense.category, expense.subcategory),
+      expenseType: expense.expenseType ?? "",
+      account: accounts.includes(expense.account) ? expense.account : "Chase Checking",
+      periodSlot: expense.periodSlot === "PP2" ? "PP2" : "PP1"
     }))
   };
 }
@@ -663,6 +938,11 @@ function normalizeCategory(category: string, subcategory?: string) {
 
 function buildPayPeriods(month: string) {
   return [`${month}-PP1`, `${month}-PP2`];
+}
+
+function defaultDateForPayPeriod(payPeriod: string) {
+  const [year, month, slot] = payPeriod.split("-");
+  return `${year}-${month}-${slot === "PP2" ? "16" : "01"}`;
 }
 
 function sum(transactions: Transaction[]) {

@@ -192,6 +192,13 @@ select {
   margin-bottom: 14px;
 }
 
+.panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .panel-heading p {
   margin-top: 4px;
   color: var(--muted);
@@ -396,12 +403,22 @@ td.actions-column {
   box-shadow: 0 24px 64px rgba(31, 37, 40, 0.22);
 }
 
+.wide-modal {
+  width: min(1180px, 100%);
+}
+
 .modal-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   padding: 18px 18px 0;
+}
+
+.modal-heading p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .modal-form {
@@ -414,6 +431,49 @@ td.actions-column {
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
+}
+
+.recurring-content {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.recurring-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.recurring-list {
+  display: grid;
+  gap: 10px;
+  max-height: 420px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.recurring-row {
+  display: grid;
+  grid-template-columns: 86px minmax(180px, 1fr) 120px 140px 150px 120px 140px auto;
+  gap: 10px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfa;
+}
+
+.recurring-delete {
+  align-self: end;
+}
+
+.recurring-add-form {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
 }
 
 .good-text {
@@ -481,6 +541,10 @@ td.actions-column {
 
   .compact-field {
     width: min(260px, 100%);
+  }
+
+  .recurring-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
 }
