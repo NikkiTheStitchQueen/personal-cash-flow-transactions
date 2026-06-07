@@ -50,7 +50,7 @@ p {
 .app-header,
 .toolbar,
 .metric-grid,
-.layout-grid,
+.list-section,
 .account-strip {
   display: grid;
   gap: 16px;
@@ -148,11 +148,6 @@ select {
   line-height: 1.05;
 }
 
-.layout-grid {
-  grid-template-columns: 380px minmax(0, 1fr);
-  align-items: start;
-}
-
 .entry-panel,
 .table-panel {
   padding: 18px;
@@ -192,7 +187,7 @@ select {
 
 table {
   width: 100%;
-  min-width: 850px;
+  min-width: 1120px;
   border-collapse: collapse;
 }
 
@@ -211,15 +206,29 @@ th {
   text-transform: uppercase;
 }
 
-th:nth-child(3),
-td:nth-child(3) {
+th:nth-child(4),
+td:nth-child(4) {
   text-align: right;
+}
+
+.actions-column {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  width: 124px;
+  min-width: 124px;
+  background: var(--panel);
+}
+
+td.actions-column {
+  box-shadow: -10px 0 16px rgba(31, 37, 40, 0.04);
 }
 
 .primary-button,
 .ghost-button,
 .import-button,
 .delete-button,
+.save-button,
 .status {
   min-height: 38px;
   border: 1px solid var(--line);
@@ -230,6 +239,13 @@ td:nth-child(3) {
 }
 
 .primary-button {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+  font-weight: 800;
+}
+
+.save-button {
   background: var(--accent);
   border-color: var(--accent);
   color: white;
@@ -261,6 +277,75 @@ td:nth-child(3) {
 .delete-button {
   min-width: 34px;
   padding: 6px 10px;
+}
+
+.compact-button {
+  min-height: 34px;
+  padding: 6px 10px;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.editing-row {
+  background: #fbfcfa;
+}
+
+.table-input {
+  min-height: 34px;
+  min-width: 110px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  font-size: 13px;
+}
+
+.amount-input {
+  min-width: 96px;
+  text-align: right;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(32, 38, 41, 0.34);
+}
+
+.modal-panel {
+  width: min(720px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 24px 64px rgba(31, 37, 40, 0.22);
+}
+
+.modal-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 18px 0;
+}
+
+.modal-form {
+  border: 0;
+  box-shadow: none;
+}
+
+.modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .good-text {
@@ -305,8 +390,7 @@ td:nth-child(3) {
 }
 
 @media (max-width: 1080px) {
-  .app-header,
-  .layout-grid {
+  .app-header {
     grid-template-columns: 1fr;
   }
 

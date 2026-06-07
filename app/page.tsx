@@ -11,6 +11,7 @@ type Transaction = {
   category: string;
   account: string;
   paid: boolean;
+  paidDate: string;
   notes: string;
 };
 
@@ -56,12 +57,15 @@ const initialState: AppState = {
 export default function TransactionsPage() {
   const [state, setState] = useState<AppState>(initialState);
   const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     const saved = window.localStorage.getItem(STORAGE_KEY);
     if (saved) {
-      setState(JSON.parse(saved) as AppState);
+      setState(normalizeState(JSON.parse(saved) as AppState));
     }
     setHydrated(true);
   }, []);
@@ -123,6 +127,7 @@ export default function TransactionsPage() {
       category: String(form.get("category")),
       account: String(form.get("account")),
       paid: form.get("paid") === "Yes",
+      paidDate: String(form.get("paidDate") ?? ""),
       notes: String(form.get("notes") ?? "").trim()
     };
 
@@ -131,6 +136,7 @@ export default function TransactionsPage() {
       transactions: [transaction, ...current.transactions]
     }));
     event.currentTarget.reset();
+    setIsAddModalOpen(false);
   }
 
   function deleteTransaction(id: string) {
@@ -138,6 +144,9 @@ export default function TransactionsPage() {
       ...current,
       transactions: current.transactions.filter((transaction) => transaction.id !== id)
     }));
+    if (editingId === id) {
+      cancelEditing();
+    }
   }
 
   function togglePaid(id: string) {
@@ -147,6 +156,31 @@ export default function TransactionsPage() {
         transaction.id === id ? { ...transaction, paid: !transaction.paid } : transaction
       )
     }));
+  }
+
+  function startEditing(transaction: Transaction) {
+    setEditingId(transaction.id);
+    setEditingTransaction({ ...transaction });
+  }
+
+  function updateEditing<K extends keyof Transaction>(key: K, value: Transaction[K]) {
+    setEditingTransaction((current) => current ? { ...current, [key]: value } : current);
+  }
+
+  function cancelEditing() {
+    setEditingId(null);
+    setEditingTransaction(null);
+  }
+
+  function saveEditing() {
+    if (!editingTransaction) return;
+    updateState((current) => ({
+      ...current,
+      transactions: current.transactions.map((transaction) =>
+        transaction.id === editingTransaction.id ? editingTransaction : transaction
+      )
+    }));
+    cancelEditing();
   }
 
   function loadExamples() {
@@ -166,7 +200,7 @@ export default function TransactionsPage() {
   }
 
   function exportCsv() {
-    const header = ["Pay Period", "Date", "Merchant", "Amount", "Category", "Account", "Account Paid?", "Notes"];
+    const header = ["Pay Period", "Date", "Merchant", "Amount", "Category", "Account", "Account Paid?", "Paid Date", "Notes"];
     const rows = state.transactions.map((transaction) => [
       transaction.payPeriod,
       transaction.date,
@@ -175,6 +209,7 @@ export default function TransactionsPage() {
       transaction.category,
       transaction.account,
       transaction.paid ? "Yes" : "No",
+      transaction.paidDate,
       transaction.notes
     ]);
     download("transactions.csv", [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\n"), "text/csv");
@@ -202,6 +237,7 @@ export default function TransactionsPage() {
           <h1>Transactions</h1>
         </div>
         <div className="header-actions">
+          <button type="button" className="primary-button" onClick={() => setIsAddModalOpen(true)}>Add transaction</button>
           <button type="button" className="ghost-button" onClick={loadExamples}>Load examples</button>
           <button type="button" className="ghost-button" onClick={exportCsv}>Export CSV</button>
           <button type="button" className="ghost-button" onClick={exportJson}>Backup JSON</button>
@@ -236,95 +272,100 @@ export default function TransactionsPage() {
         <Metric label="Unpaid items" value={String(unpaidCount)} tone={unpaidCount ? "warn" : "good"} />
       </section>
 
-      <section className="layout-grid">
-        <form className="entry-panel" onSubmit={addTransaction}>
-          <h2>Add transaction</h2>
-          <div className="field-grid">
-            <label>
-              Pay period
-              <select name="payPeriod" defaultValue={state.activePayPeriod} required>
-                {payPeriods.map((period) => <option key={period} value={period}>{formatPayPeriod(period)}</option>)}
-              </select>
-            </label>
-            <label>
-              Date
-              <input name="date" type="date" defaultValue={todayIso()} required />
-            </label>
-            <label className="span-2">
-              Merchant
-              <input name="merchant" type="text" placeholder="Kroger, Netflix, Paycheck" required />
-            </label>
-            <label>
-              Amount
-              <input name="amount" type="number" step="0.01" placeholder="-82.13 or 3250" required />
-            </label>
-            <label>
-              Category
-              <select name="category" required>
-                {categories.map((category) => <option key={category}>{category}</option>)}
-              </select>
-            </label>
-            <label>
-              Account
-              <select name="account" required>
-                {accounts.map((account) => <option key={account}>{account}</option>)}
-              </select>
-            </label>
-            <label>
-              Account paid?
-              <select name="paid" required>
-                <option>Yes</option>
-                <option>No</option>
-              </select>
-            </label>
-            <label className="span-2">
-              Notes
-              <input name="notes" type="text" placeholder="Optional" />
-            </label>
-          </div>
-          <button className="primary-button" type="submit">Save transaction</button>
-        </form>
-
+      <section className="list-section">
         <section className="table-panel">
           <div className="panel-heading">
             <div>
               <h2>{formatPayPeriod(state.activePayPeriod)}</h2>
               <p>{visibleTransactions.length} transactions shown</p>
             </div>
+            <button type="button" className="primary-button" onClick={() => setIsAddModalOpen(true)}>Add transaction</button>
           </div>
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
+                  <th>Pay period</th>
                   <th>Date</th>
                   <th>Merchant</th>
                   <th>Amount</th>
                   <th>Category</th>
                   <th>Account</th>
                   <th>Paid</th>
+                  <th>Paid date</th>
                   <th>Notes</th>
-                  <th />
+                  <th className="actions-column">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {visibleTransactions.length ? visibleTransactions.map((transaction) => (
-                  <tr key={transaction.id}>
-                    <td>{formatDate(transaction.date)}</td>
-                    <td>{transaction.merchant}</td>
-                    <td className={transaction.amount < 0 ? "danger-text" : "good-text"}>{money(transaction.amount)}</td>
-                    <td>{transaction.category}</td>
-                    <td>{transaction.account}</td>
-                    <td>
-                      <button type="button" className={transaction.paid ? "status paid" : "status unpaid"} onClick={() => togglePaid(transaction.id)}>
-                        {transaction.paid ? "Yes" : "No"}
-                      </button>
-                    </td>
-                    <td>{transaction.notes}</td>
-                    <td><button type="button" className="delete-button" onClick={() => deleteTransaction(transaction.id)}>x</button></td>
-                  </tr>
-                )) : (
+                {visibleTransactions.length ? visibleTransactions.map((transaction) => {
+                  const isEditing = editingId === transaction.id && editingTransaction;
+
+                  if (isEditing) {
+                    return (
+                      <tr className="editing-row" key={transaction.id}>
+                        <td>
+                          <select className="table-input" value={editingTransaction.payPeriod} onChange={(event) => updateEditing("payPeriod", event.target.value)}>
+                            {payPeriods.map((period) => <option key={period} value={period}>{formatPayPeriod(period)}</option>)}
+                          </select>
+                        </td>
+                        <td><input className="table-input" type="date" value={editingTransaction.date} onChange={(event) => updateEditing("date", event.target.value)} /></td>
+                        <td><input className="table-input" value={editingTransaction.merchant} onChange={(event) => updateEditing("merchant", event.target.value)} /></td>
+                        <td><input className="table-input amount-input" type="number" step="0.01" value={editingTransaction.amount} onChange={(event) => updateEditing("amount", Number(event.target.value))} /></td>
+                        <td>
+                          <select className="table-input" value={editingTransaction.category} onChange={(event) => updateEditing("category", event.target.value)}>
+                            {categories.map((category) => <option key={category}>{category}</option>)}
+                          </select>
+                        </td>
+                        <td>
+                          <select className="table-input" value={editingTransaction.account} onChange={(event) => updateEditing("account", event.target.value)}>
+                            {accounts.map((account) => <option key={account}>{account}</option>)}
+                          </select>
+                        </td>
+                        <td>
+                          <select className="table-input" value={editingTransaction.paid ? "Yes" : "No"} onChange={(event) => updateEditing("paid", event.target.value === "Yes")}>
+                            <option>Yes</option>
+                            <option>No</option>
+                          </select>
+                        </td>
+                        <td><input className="table-input" type="date" value={editingTransaction.paidDate} onChange={(event) => updateEditing("paidDate", event.target.value)} /></td>
+                        <td><input className="table-input" value={editingTransaction.notes} onChange={(event) => updateEditing("notes", event.target.value)} /></td>
+                        <td className="actions-column">
+                          <div className="row-actions">
+                            <button type="button" className="save-button" onClick={saveEditing}>Save</button>
+                            <button type="button" className="delete-button" onClick={cancelEditing}>Cancel</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  return (
+                    <tr key={transaction.id}>
+                      <td>{formatPayPeriod(transaction.payPeriod)}</td>
+                      <td>{formatDate(transaction.date)}</td>
+                      <td>{transaction.merchant}</td>
+                      <td className={transaction.amount < 0 ? "danger-text" : "good-text"}>{money(transaction.amount)}</td>
+                      <td>{transaction.category}</td>
+                      <td>{transaction.account}</td>
+                      <td>
+                        <button type="button" className={transaction.paid ? "status paid" : "status unpaid"} onClick={() => togglePaid(transaction.id)}>
+                          {transaction.paid ? "Yes" : "No"}
+                        </button>
+                      </td>
+                      <td>{transaction.paidDate ? formatDate(transaction.paidDate) : ""}</td>
+                      <td>{transaction.notes}</td>
+                      <td className="actions-column">
+                        <div className="row-actions">
+                          <button type="button" className="ghost-button compact-button" onClick={() => startEditing(transaction)}>Edit</button>
+                          <button type="button" className="delete-button" onClick={() => deleteTransaction(transaction.id)}>x</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }) : (
                   <tr>
-                    <td colSpan={8}><div className="empty-state">No transactions for this pay period yet.</div></td>
+                    <td colSpan={10}><div className="empty-state">No transactions for this pay period yet.</div></td>
                   </tr>
                 )}
               </tbody>
@@ -332,6 +373,70 @@ export default function TransactionsPage() {
           </div>
         </section>
       </section>
+
+      {isAddModalOpen && (
+        <div className="modal-backdrop" role="presentation">
+          <section className="modal-panel" role="dialog" aria-modal="true" aria-labelledby="add-transaction-title">
+            <div className="modal-heading">
+              <h2 id="add-transaction-title">Add transaction</h2>
+              <button type="button" className="delete-button" onClick={() => setIsAddModalOpen(false)}>x</button>
+            </div>
+            <form className="entry-panel modal-form" onSubmit={addTransaction}>
+              <div className="field-grid">
+                <label>
+                  Pay period
+                  <select name="payPeriod" defaultValue={state.activePayPeriod} required>
+                    {payPeriods.map((period) => <option key={period} value={period}>{formatPayPeriod(period)}</option>)}
+                  </select>
+                </label>
+                <label>
+                  Date
+                  <input name="date" type="date" defaultValue={todayIso()} required />
+                </label>
+                <label className="span-2">
+                  Merchant
+                  <input name="merchant" type="text" placeholder="Kroger, Netflix, Paycheck" required />
+                </label>
+                <label>
+                  Amount
+                  <input name="amount" type="number" step="0.01" placeholder="-82.13 or 3250" required />
+                </label>
+                <label>
+                  Category
+                  <select name="category" required>
+                    {categories.map((category) => <option key={category}>{category}</option>)}
+                  </select>
+                </label>
+                <label>
+                  Account
+                  <select name="account" required>
+                    {accounts.map((account) => <option key={account}>{account}</option>)}
+                  </select>
+                </label>
+                <label>
+                  Account paid?
+                  <select name="paid" required>
+                    <option>Yes</option>
+                    <option>No</option>
+                  </select>
+                </label>
+                <label>
+                  Paid date
+                  <input name="paidDate" type="date" />
+                </label>
+                <label className="span-2">
+                  Notes
+                  <input name="notes" type="text" placeholder="Optional" />
+                </label>
+              </div>
+              <div className="modal-actions">
+                <button className="primary-button" type="submit">Save transaction</button>
+                <button className="ghost-button" type="button" onClick={() => setIsAddModalOpen(false)}>Cancel</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
 
       <section className="account-strip" aria-label="Account summary">
         {accountTotals.map((item) => (
@@ -373,7 +478,18 @@ function makeTransaction(
     category,
     account,
     paid,
+    paidDate: paid ? date : "",
     notes: ""
+  };
+}
+
+function normalizeState(state: AppState): AppState {
+  return {
+    ...state,
+    transactions: state.transactions.map((transaction) => ({
+      ...transaction,
+      paidDate: transaction.paidDate ?? ""
+    }))
   };
 }
 
