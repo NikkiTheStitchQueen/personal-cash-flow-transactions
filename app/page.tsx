@@ -37,6 +37,8 @@ type AppState = {
   recurringExpenses: RecurringExpense[];
 };
 
+type PersistenceTarget = "local" | "database";
+
 const STORAGE_KEY = "personal-cash-flow-transactions-v1";
 
 const accounts = [
@@ -129,20 +131,67 @@ export default function TransactionsPage() {
   const [transactionError, setTransactionError] = useState("");
   const [editingError, setEditingError] = useState("");
   const [hydrated, setHydrated] = useState(false);
+  const [persistenceTarget, setPersistenceTarget] = useState<PersistenceTarget>("local");
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      setState(normalizeState(JSON.parse(saved) as AppState));
+    let isCurrent = true;
+
+    async function loadState() {
+      let nextState = loadLocalState();
+      let nextPersistenceTarget: PersistenceTarget = "local";
+
+      try {
+        const response = await fetch("/api/state", { cache: "no-store" });
+
+        if (response.ok) {
+          const payload = await response.json() as { configured: boolean; state: AppState | null };
+
+          if (payload.configured) {
+            nextPersistenceTarget = "database";
+            nextState = payload.state ? normalizeState(payload.state) : nextState;
+          }
+        }
+      } catch {
+        nextPersistenceTarget = "local";
+      }
+
+      if (!isCurrent) return;
+
+      if (nextState) {
+        setState(nextState);
+      }
+      setPersistenceTarget(nextPersistenceTarget);
+      setHydrated(true);
     }
-    setHydrated(true);
+
+    loadState();
+
+    return () => {
+      isCurrent = false;
+    };
   }, []);
 
   useEffect(() => {
-    if (hydrated) {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    }
-  }, [hydrated, state]);
+    if (!hydrated) return;
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+
+    if (persistenceTarget !== "database") return;
+
+    const timeout = window.setTimeout(async () => {
+      try {
+        await fetch("/api/state", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(state)
+        });
+      } catch {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }
+    }, 500);
+
+    return () => window.clearTimeout(timeout);
+  }, [hydrated, persistenceTarget, state]);
 
   const payPeriods = useMemo(() => buildPayPeriods(state.activeMonth), [state.activeMonth]);
   const activePeriodSlot = state.activePayPeriod.endsWith("PP2") ? "PP2" : "PP1";
@@ -924,6 +973,20 @@ function normalizeState(state: AppState): AppState {
       periodSlot: expense.periodSlot === "PP2" ? "PP2" : "PP1"
     }))
   };
+}
+
+function loadLocalState() {
+  const saved = window.localStorage.getItem(STORAGE_KEY);
+
+  if (!saved) {
+    return null;
+  }
+
+  try {
+    return normalizeState(JSON.parse(saved) as AppState);
+  } catch {
+    return null;
+  }
 }
 
 function normalizeCategory(category: string, subcategory?: string) {
