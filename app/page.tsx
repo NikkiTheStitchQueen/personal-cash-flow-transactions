@@ -74,37 +74,37 @@ const categories = Object.keys(categorySubcategories);
 const expenseTypes = ["Planned", "Necessary", "Regret", "Impulse", "Worth It"];
 
 const defaultRecurringExpenses: RecurringExpense[] = [
-  recurring("PP1", "Netrist Paycheck", 2986.2, "Income", "Income", "", "Chase Checking"),
-  recurring("PP1", "Realtracs Paycheck", 3622.26, "Income", "Income", "", "Chase Checking"),
-  recurring("PP1", "Realtracs Paycheck", 157.5, "Income", "Income", "", "Chase Checking"),
-  recurring("PP1", "Tithe", -500, "Tithe", "General", "Planned", "Chase Checking"),
-  recurring("PP1", "Mortgage", -2294.45, "Bills", "Mortgage", "Planned", "Chase Checking"),
-  recurring("PP1", "Northwestern", -54.35, "Bills", "Insurance", "Planned", "Chase Checking"),
-  recurring("PP1", "Hudson - Afterschool", 90, "Childcare", "After School", "", "Chase Checking"),
-  recurring("PP1", "Hudson - Afterschool", -90, "Childcare", "After School", "Planned", "Chase Checking"),
-  recurring("PP1", "Geico", -760.26, "Bills", "Car Insurance", "Planned", "Chase Checking"),
-  recurring("PP1", "Audible", -16.37, "Entertainment", "Subscriptions", "Planned", "Amazon"),
-  recurring("PP1", "Disney Plus", -21.89, "Entertainment", "Subscriptions", "Planned", "Sapphire"),
-  recurring("PP1", "Pay Down Lexus", -700, "Car", "Lexus", "Planned", "Chase Checking"),
-  recurring("PP1", "Gracie Barra Tuition", -81, "Activities", "Hudson", "Planned", "Chase Checking"),
-  recurring("PP2", "Tithe", -500, "Tithe", "General", "Planned", "Chase Checking"),
-  recurring("PP2", "Banner Insurance", -31.4, "Bills", "Insurance", "Planned", "Chase Checking"),
-  recurring("PP2", "Holden Insurance", -45.12, "Bills", "Insurance", "Planned", "Chase Checking"),
-  recurring("PP2", "Pay Down Lexus", -1500, "Car", "Lexus", "Planned", "Chase Checking"),
-  recurring("PP2", "Car Payment", -683.61, "Car", "Lexus", "Planned", "Chase Checking"),
-  recurring("PP2", "NES", -191, "Bills", "Utilities", "Planned", "Chase Checking"),
-  recurring("PP2", "Comcast", -161.92, "Bills", "Utilities", "Planned", "Sapphire"),
-  recurring("PP2", "Piedmont", -63, "Bills", "Utilities", "Planned", "Chase Checking"),
-  recurring("PP2", "Water", -24.09, "Bills", "Utilities", "Planned", "Chase Checking"),
-  recurring("PP2", "Verizon", -244, "Bills", "Utilities", "Planned", "VZW"),
-  recurring("PP2", "Hudson - After School - 6/12", -90, "Childcare", "After School", "Planned", "Chase Checking"),
-  recurring("PP2", "Hudson - After School - 6/12", -90, "Childcare", "After School", "Planned", "Chase Checking"),
-  recurring("PP2", "JMI - Alexandra Sponsorship - 3/28", -41.3, "Gift", "General", "Planned", "Chase Checking"),
-  recurring("PP2", "Youtube Premium", -29.55, "Entertainment", "Subscriptions", "Planned", "Amazon"),
-  recurring("PP2", "ChatGPT", -21.95, "Entertainment", "Subscriptions", "Planned", "Sapphire"),
-  recurring("PP2", "Rene - Student Loans", -600, "Bills", "Student Loans", "Planned", "Chase Checking"),
-  recurring("PP2", "Gracie Barra Tuition - 6/9", -81, "Activities", "Hudson", "Planned", "Chase Checking"),
-  recurring("PP2", "Gracie Barra Tuition - 6/23", -81, "Activities", "Hudson", "Planned", "Chase Checking")
+  recurring("PP1", "Netrist Paycheck", 2986.2, "Income", "Income", "Chase Checking"),
+  recurring("PP1", "Realtracs Paycheck", 3622.26, "Income", "Income", "Chase Checking"),
+  recurring("PP1", "Realtracs Paycheck", 157.5, "Income", "Income", "Chase Checking"),
+  recurring("PP1", "Tithe", -500, "Tithe", "General", "Chase Checking"),
+  recurring("PP1", "Mortgage", -2294.45, "Bills", "Mortgage", "Chase Checking"),
+  recurring("PP1", "Northwestern", -54.35, "Bills", "Insurance", "Chase Checking"),
+  recurring("PP1", "Hudson - Afterschool", 90, "Childcare", "After School", "Chase Checking"),
+  recurring("PP1", "Hudson - Afterschool", -90, "Childcare", "After School", "Chase Checking"),
+  recurring("PP1", "Geico", -760.26, "Bills", "Car Insurance", "Chase Checking"),
+  recurring("PP1", "Audible", -16.37, "Entertainment", "Subscriptions", "Amazon"),
+  recurring("PP1", "Disney Plus", -21.89, "Entertainment", "Subscriptions", "Sapphire"),
+  recurring("PP1", "Pay Down Lexus", -700, "Car", "Lexus", "Chase Checking"),
+  recurring("PP1", "Gracie Barra Tuition", -81, "Activities", "Hudson", "Chase Checking"),
+  recurring("PP2", "Tithe", -500, "Tithe", "General", "Chase Checking"),
+  recurring("PP2", "Banner Insurance", -31.4, "Bills", "Insurance", "Chase Checking"),
+  recurring("PP2", "Holden Insurance", -45.12, "Bills", "Insurance", "Chase Checking"),
+  recurring("PP2", "Pay Down Lexus", -1500, "Car", "Lexus", "Chase Checking"),
+  recurring("PP2", "Car Payment", -683.61, "Car", "Lexus", "Chase Checking"),
+  recurring("PP2", "NES", -191, "Bills", "Utilities", "Chase Checking"),
+  recurring("PP2", "Comcast", -161.92, "Bills", "Utilities", "Sapphire"),
+  recurring("PP2", "Piedmont", -63, "Bills", "Utilities", "Chase Checking"),
+  recurring("PP2", "Water", -24.09, "Bills", "Utilities", "Chase Checking"),
+  recurring("PP2", "Verizon", -244, "Bills", "Utilities", "VZW"),
+  recurring("PP2", "Hudson - After School - 6/12", -90, "Childcare", "After School", "Chase Checking"),
+  recurring("PP2", "Hudson - After School - 6/12", -90, "Childcare", "After School", "Chase Checking"),
+  recurring("PP2", "JMI - Alexandra Sponsorship - 3/28", -41.3, "Gift", "General", "Chase Checking"),
+  recurring("PP2", "Youtube Premium", -29.55, "Entertainment", "Subscriptions", "Amazon"),
+  recurring("PP2", "ChatGPT", -21.95, "Entertainment", "Subscriptions", "Sapphire"),
+  recurring("PP2", "Rene - Student Loans", -600, "Bills", "Student Loans", "Chase Checking"),
+  recurring("PP2", "Gracie Barra Tuition - 6/9", -81, "Activities", "Hudson", "Chase Checking"),
+  recurring("PP2", "Gracie Barra Tuition - 6/23", -81, "Activities", "Hudson", "Chase Checking")
 ];
 
 const initialState: AppState = {
@@ -124,6 +124,8 @@ export default function TransactionsPage() {
   const [addCategory, setAddCategory] = useState("");
   const [recurringCategory, setRecurringCategory] = useState("Income");
   const [showFilters, setShowFilters] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showMobileSummary, setShowMobileSummary] = useState(false);
   const [transactionError, setTransactionError] = useState("");
   const [editingError, setEditingError] = useState("");
   const [hydrated, setHydrated] = useState(false);
@@ -157,9 +159,9 @@ export default function TransactionsPage() {
 
   const periodTransactions = state.transactions.filter((transaction) => transaction.payPeriod === state.activePayPeriod);
   const periodIncome = sum(periodTransactions.filter((transaction) => transaction.amount > 0));
-  const periodSpending = Math.abs(sum(periodTransactions.filter((transaction) => transaction.amount < 0)));
+  const plannedExpenses = Math.abs(sum(periodTransactions.filter((transaction) => transaction.expenseType === "Planned" && transaction.amount < 0)));
+  const periodSpending = Math.abs(sum(periodTransactions.filter((transaction) => transaction.amount < 0 && transaction.expenseType !== "Planned")));
   const unpaidCount = periodTransactions.filter((transaction) => !transaction.paid).length;
-  const netFlow = periodIncome - periodSpending;
   const transactionCount = periodTransactions.length;
 
   const accountTotals = accounts.map((account) => {
@@ -292,7 +294,7 @@ export default function TransactionsPage() {
       amount: Number(form.get("amount")),
       category: String(form.get("category")),
       subcategory: String(form.get("subcategory")),
-      expenseType: String(form.get("expenseType") ?? ""),
+      expenseType: "Planned",
       account: String(form.get("account"))
     };
 
@@ -409,6 +411,36 @@ export default function TransactionsPage() {
             <SearchIcon />
             <FilterIcon />
           </button>
+          <button type="button" className="ghost-button desktop-recurring-button" onClick={() => setIsRecurringModalOpen(true)}>Recurring</button>
+          <div className="more-menu">
+            <button type="button" className="icon-button" aria-label="More options" title="More options" aria-expanded={showMoreMenu} onClick={() => setShowMoreMenu((current) => !current)}>
+              <DotsIcon />
+            </button>
+            {showMoreMenu && (
+              <div className="more-menu-panel">
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => {
+                    setShowMobileSummary((current) => !current);
+                    setShowMoreMenu(false);
+                  }}
+                >
+                  Summary
+                </button>
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => {
+                    setIsRecurringModalOpen(true);
+                    setShowMoreMenu(false);
+                  }}
+                >
+                  Recurring
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -429,7 +461,7 @@ export default function TransactionsPage() {
         </section>
       )}
 
-      <section className="account-strip" aria-label="Account summary">
+      <section className={showMobileSummary ? "account-strip mobile-summary-open" : "account-strip"} aria-label="Account summary">
         {accountTotals.map((item) => (
           <article className="account-card" key={item.account}>
             <strong>{item.account}</strong>
@@ -445,9 +477,6 @@ export default function TransactionsPage() {
             <div>
               <h2>{formatPayPeriod(state.activePayPeriod)}</h2>
               <p>{visibleTransactions.length} transactions shown</p>
-            </div>
-            <div className="panel-actions">
-              <button type="button" className="ghost-button" onClick={() => setIsRecurringModalOpen(true)}>Recurring</button>
             </div>
           </div>
           <div className="table-wrap">
@@ -576,10 +605,10 @@ export default function TransactionsPage() {
 
       <section className="metric-grid bottom-stats" aria-label="Pay period summary">
         <Metric label="Income" value={money(periodIncome)} tone="good" />
+        <Metric label="Planned expenses" value={money(plannedExpenses)} tone="warn" />
         <Metric label="Spending" value={money(periodSpending)} tone="danger" />
-        <Metric label="Net flow" value={money(netFlow)} tone={netFlow >= 0 ? "good" : "danger"} />
         <Metric label="Unpaid items" value={String(unpaidCount)} tone={unpaidCount ? "warn" : "good"} />
-        <Metric label="Transactions" value={String(transactionCount)} tone="good" />
+        <Metric label="Total transactions" value={String(transactionCount)} tone="good" />
       </section>
 
       {isAddModalOpen && (
@@ -709,13 +738,6 @@ export default function TransactionsPage() {
                       </select>
                     </label>
                     <label>
-                      Type
-                      <select value={expense.expenseType} onChange={(event) => updateRecurringExpense(expense.id, "expenseType", event.target.value)}>
-                        <option value="">None</option>
-                        {expenseTypes.map((expenseType) => <option key={expenseType}>{expenseType}</option>)}
-                      </select>
-                    </label>
-                    <label>
                       Account
                       <select value={expense.account} onChange={(event) => updateRecurringExpense(expense.id, "account", event.target.value)}>
                         {accounts.map((account) => <option key={account}>{account}</option>)}
@@ -754,13 +776,6 @@ export default function TransactionsPage() {
                     Subcategory
                     <select name="subcategory" required>
                       {categorySubcategories[recurringCategory].map((subcategory) => <option key={subcategory}>{subcategory}</option>)}
-                    </select>
-                  </label>
-                  <label>
-                    Type
-                    <select name="expenseType">
-                      <option value="">None</option>
-                      {expenseTypes.map((expenseType) => <option key={expenseType}>{expenseType}</option>)}
                     </select>
                   </label>
                   <label>
@@ -805,6 +820,16 @@ function FilterIcon() {
       <path d="M4 6h16" />
       <path d="M7 12h10" />
       <path d="M10 18h4" />
+    </svg>
+  );
+}
+
+function DotsIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M5 12h.01" />
+      <path d="M12 12h.01" />
+      <path d="M19 12h.01" />
     </svg>
   );
 }
@@ -868,7 +893,6 @@ function recurring(
   amount: number,
   category: string,
   subcategory: string,
-  expenseType: string,
   account: string
 ): RecurringExpense {
   return {
@@ -878,7 +902,7 @@ function recurring(
     amount,
     category,
     subcategory,
-    expenseType,
+    expenseType: "Planned",
     account
   };
 }
@@ -895,7 +919,7 @@ function normalizeState(state: AppState): AppState {
     recurringExpenses: (state.recurringExpenses ?? defaultRecurringExpenses).map((expense) => ({
       ...expense,
       ...normalizeCategory(expense.category, expense.subcategory),
-      expenseType: expense.expenseType ?? "",
+      expenseType: "Planned",
       account: accounts.includes(expense.account) ? expense.account : "Chase Checking",
       periodSlot: expense.periodSlot === "PP2" ? "PP2" : "PP1"
     }))

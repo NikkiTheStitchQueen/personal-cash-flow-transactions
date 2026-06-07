@@ -92,6 +92,32 @@ h2 {
   min-height: 40px;
 }
 
+.more-menu {
+  position: relative;
+  display: none;
+}
+
+.more-menu-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 5;
+  display: grid;
+  gap: 6px;
+  min-width: 148px;
+  padding: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.more-menu-panel .ghost-button {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+
 .toolbar {
   grid-template-columns: 180px minmax(220px, 1fr) auto;
   margin-bottom: 16px;
@@ -462,7 +488,7 @@ td.actions-column {
 
 .recurring-row {
   display: grid;
-  grid-template-columns: 86px minmax(180px, 1fr) 120px 140px 150px 120px 140px auto;
+  grid-template-columns: 86px minmax(180px, 1fr) 120px 140px 150px 140px auto;
   gap: 10px;
   align-items: end;
   padding: 12px;
@@ -576,7 +602,7 @@ td.actions-column {
 
   .header-actions {
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto auto;
     width: 100%;
     align-items: end;
   }
@@ -589,6 +615,22 @@ td.actions-column {
 
   .compact-field {
     width: 100%;
+  }
+
+  .desktop-recurring-button {
+    display: none;
+  }
+
+  .more-menu {
+    display: block;
+  }
+
+  .account-strip {
+    display: none;
+  }
+
+  .account-strip.mobile-summary-open {
+    display: grid;
   }
 
   .filter-actions {
