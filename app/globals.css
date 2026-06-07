@@ -88,6 +88,10 @@ h2 {
   justify-content: flex-end;
 }
 
+.header-actions form {
+  display: contents;
+}
+
 .quick-add-button {
   min-height: 40px;
 }
@@ -647,6 +651,33 @@ td.actions-column {
 
 .account-card small {
   color: var(--muted);
+}
+
+.login-screen {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 18px;
+}
+
+.login-panel {
+  display: grid;
+  gap: 18px;
+  width: min(420px, 100%);
+  padding: 22px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.login-form {
+  display: grid;
+  gap: 14px;
+}
+
+.login-form .primary-button {
+  min-height: 44px;
 }
 
 @media (max-width: 1080px) {

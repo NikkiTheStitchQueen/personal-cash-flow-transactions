@@ -508,6 +508,9 @@ export default function TransactionsPage() {
               </div>
             )}
           </div>
+          <form action="/api/logout" method="post">
+            <button type="submit" className="ghost-button">Log out</button>
+          </form>
         </div>
       </header>
 
