@@ -527,28 +527,72 @@ td.actions-column {
   padding: 18px;
 }
 
-.recurring-toolbar {
-  display: flex;
-  justify-content: flex-end;
+.recurring-date-field {
+  width: min(220px, 100%);
 }
 
 .recurring-list {
   display: grid;
-  gap: 10px;
+  gap: 16px;
   max-height: 420px;
   overflow: auto;
   padding-right: 4px;
 }
 
+.recurring-group {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+}
+
+.recurring-group-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.recurring-group-heading > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.recurring-group-heading h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.recurring-group-heading span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.recurring-group-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+
+.recurring-group-list {
+  display: grid;
+  gap: 10px;
+}
+
 .recurring-row {
   display: grid;
-  grid-template-columns: 86px minmax(180px, 1fr) 120px 140px 150px 140px auto;
+  grid-template-columns: minmax(180px, 1fr) 120px 140px 150px 140px auto;
   gap: 10px;
   align-items: end;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fbfcfa;
+  background: var(--panel);
 }
 
 .recurring-delete {
@@ -766,5 +810,16 @@ td.actions-column {
   .modal-actions > button {
     width: 100%;
     min-height: 46px;
+  }
+
+  .recurring-group-heading,
+  .recurring-group-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .recurring-date-field,
+  .recurring-group-controls > button {
+    width: 100%;
   }
 }

@@ -125,7 +125,11 @@ export default function TransactionsPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
   const [addCategory, setAddCategory] = useState("");
-  const [recurringCategory, setRecurringCategory] = useState("Income");
+  const [recurringCategories, setRecurringCategories] = useState<Record<PayPeriodSlot, string>>({ PP1: "Income", PP2: "Income" });
+  const [recurringTransactionDates, setRecurringTransactionDates] = useState<Record<PayPeriodSlot, string>>({
+    PP1: defaultDateForPayPeriod(`${initialState.activeMonth}-PP1`),
+    PP2: defaultDateForPayPeriod(`${initialState.activeMonth}-PP2`)
+  });
   const [showFilters, setShowFilters] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showMobileSummary, setShowMobileSummary] = useState(false);
@@ -196,8 +200,10 @@ export default function TransactionsPage() {
   }, [hydrated, persistenceTarget, state]);
 
   const payPeriods = useMemo(() => buildPayPeriods(state.activeMonth), [state.activeMonth]);
-  const activePeriodSlot = state.activePayPeriod.endsWith("PP2") ? "PP2" : "PP1";
-  const activeRecurringExpenses = state.recurringExpenses.filter((expense) => expense.periodSlot === activePeriodSlot);
+  const recurringExpenseGroups = {
+    PP1: state.recurringExpenses.filter((expense) => expense.periodSlot === "PP1").sort(compareRecurringExpenses),
+    PP2: state.recurringExpenses.filter((expense) => expense.periodSlot === "PP2").sort(compareRecurringExpenses)
+  };
   const visibleTransactions = state.transactions
     .filter((transaction) => transaction.payPeriod === state.activePayPeriod)
     .filter((transaction) =>
@@ -206,7 +212,7 @@ export default function TransactionsPage() {
         .toLowerCase()
         .includes(search.toLowerCase())
     )
-    .sort((a, b) => a.date.localeCompare(b.date));
+    .sort(compareTransactions);
 
   const periodTransactions = state.transactions.filter((transaction) => transaction.payPeriod === state.activePayPeriod);
   const periodIncome = sum(periodTransactions.filter((transaction) => transaction.amount > 0));
@@ -227,6 +233,14 @@ export default function TransactionsPage() {
 
   function updateState(updater: (current: AppState) => AppState) {
     setState((current) => updater(current));
+  }
+
+  function openRecurringModal() {
+    setRecurringTransactionDates({
+      PP1: defaultDateForPayPeriod(`${state.activeMonth}-PP1`),
+      PP2: defaultDateForPayPeriod(`${state.activeMonth}-PP2`)
+    });
+    setIsRecurringModalOpen(true);
   }
 
   function changeMonth(month: string) {
@@ -336,12 +350,12 @@ export default function TransactionsPage() {
     cancelEditing();
   }
 
-  function addRecurringExpense(event: FormEvent<HTMLFormElement>) {
+  function addRecurringExpense(event: FormEvent<HTMLFormElement>, periodSlot: PayPeriodSlot) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const expense: RecurringExpense = {
       id: crypto.randomUUID(),
-      periodSlot: String(form.get("periodSlot")) as PayPeriodSlot,
+      periodSlot,
       merchant: String(form.get("merchant")).trim(),
       amount: Number(form.get("amount")),
       category: String(form.get("category")),
@@ -355,7 +369,7 @@ export default function TransactionsPage() {
       recurringExpenses: [...current.recurringExpenses, expense]
     }));
     event.currentTarget.reset();
-    setRecurringCategory("Income");
+    setRecurringCategories((current) => ({ ...current, [periodSlot]: "Income" }));
   }
 
   function updateRecurringExpense<K extends keyof RecurringExpense>(id: string, key: K, value: RecurringExpense[K]) {
@@ -383,13 +397,14 @@ export default function TransactionsPage() {
     }));
   }
 
-  function addRecurringToActivePayPeriod() {
-    const transactionDate = defaultDateForPayPeriod(state.activePayPeriod);
-    const transactions = activeRecurringExpenses.map((expense) => {
+  function addRecurringToPayPeriod(periodSlot: PayPeriodSlot) {
+    const payPeriod = `${state.activeMonth}-${periodSlot}`;
+    const transactionDate = recurringTransactionDates[periodSlot] || defaultDateForPayPeriod(payPeriod);
+    const transactions = recurringExpenseGroups[periodSlot].map((expense) => {
       const paid = expense.amount > 0;
       return {
         id: crypto.randomUUID(),
-        payPeriod: state.activePayPeriod,
+        payPeriod,
         date: transactionDate,
         merchant: expense.merchant,
         amount: expense.amount,
@@ -463,7 +478,7 @@ export default function TransactionsPage() {
             <SearchIcon />
             <FilterIcon />
           </button>
-          <button type="button" className="ghost-button desktop-recurring-button" onClick={() => setIsRecurringModalOpen(true)}>Recurring</button>
+          <button type="button" className="ghost-button desktop-recurring-button" onClick={openRecurringModal}>Recurring</button>
           <div className="more-menu">
             <button type="button" className="icon-button" aria-label="More options" title="More options" aria-expanded={showMoreMenu} onClick={() => setShowMoreMenu((current) => !current)}>
               <DotsIcon />
@@ -484,7 +499,7 @@ export default function TransactionsPage() {
                   type="button"
                   className="ghost-button"
                   onClick={() => {
-                    setIsRecurringModalOpen(true);
+                    openRecurringModal();
                     setShowMoreMenu(false);
                   }}
                 >
@@ -773,98 +788,107 @@ export default function TransactionsPage() {
             <div className="modal-heading">
               <div>
                 <h2 id="recurring-title">Recurring expenses</h2>
-                <p>{activeRecurringExpenses.length} items for {activePeriodSlot}</p>
+                <p>{state.recurringExpenses.length} recurring items</p>
               </div>
               <button type="button" className="delete-button" onClick={() => setIsRecurringModalOpen(false)}>x</button>
             </div>
 
             <div className="recurring-content">
-              <div className="recurring-toolbar">
-                <button type="button" className="primary-button" onClick={addRecurringToActivePayPeriod}>
-                  Add {activePeriodSlot} recurring to transactions
-                </button>
-              </div>
-
               <div className="recurring-list">
-                {state.recurringExpenses.map((expense) => (
-                  <article className="recurring-row" key={expense.id}>
-                    <label>
-                      Period
-                      <select value={expense.periodSlot} onChange={(event) => updateRecurringExpense(expense.id, "periodSlot", event.target.value as PayPeriodSlot)}>
-                        <option value="PP1">PP1</option>
-                        <option value="PP2">PP2</option>
-                      </select>
-                    </label>
-                    <label>
-                      Name
-                      <input value={expense.merchant} onChange={(event) => updateRecurringExpense(expense.id, "merchant", event.target.value)} />
-                    </label>
-                    <label>
-                      Amount
-                      <input type="number" step="0.01" value={expense.amount} onChange={(event) => updateRecurringExpense(expense.id, "amount", Number(event.target.value))} />
-                    </label>
-                    <label>
-                      Category
-                      <select value={expense.category} onChange={(event) => updateRecurringExpense(expense.id, "category", event.target.value)}>
-                        {categories.map((category) => <option key={category}>{category}</option>)}
-                      </select>
-                    </label>
-                    <label>
-                      Subcategory
-                      <select value={expense.subcategory} onChange={(event) => updateRecurringExpense(expense.id, "subcategory", event.target.value)}>
-                        {(categorySubcategories[expense.category] ?? []).map((subcategory) => <option key={subcategory}>{subcategory}</option>)}
-                      </select>
-                    </label>
-                    <label>
-                      Account
-                      <select value={expense.account} onChange={(event) => updateRecurringExpense(expense.id, "account", event.target.value)}>
-                        {accounts.map((account) => <option key={account}>{account}</option>)}
-                      </select>
-                    </label>
-                    <button type="button" className="delete-button recurring-delete" onClick={() => deleteRecurringExpense(expense.id)}>x</button>
-                  </article>
+                {(["PP1", "PP2"] as PayPeriodSlot[]).map((periodSlot) => (
+                  <section className="recurring-group" key={periodSlot} aria-labelledby={`recurring-${periodSlot}`}>
+                    <div className="recurring-group-heading">
+                      <div>
+                        <h3 id={`recurring-${periodSlot}`}>{periodSlot}</h3>
+                        <span>{recurringExpenseGroups[periodSlot].length} items</span>
+                      </div>
+                      <div className="recurring-group-controls">
+                        <label className="recurring-date-field">
+                          Transaction date
+                          <input
+                            type="date"
+                            value={recurringTransactionDates[periodSlot]}
+                            onChange={(event) => setRecurringTransactionDates((current) => ({ ...current, [periodSlot]: event.target.value }))}
+                          />
+                        </label>
+                        <button type="button" className="primary-button" onClick={() => addRecurringToPayPeriod(periodSlot)}>
+                          Add {periodSlot} expenses
+                        </button>
+                      </div>
+                    </div>
+                    <div className="recurring-group-list">
+                      {recurringExpenseGroups[periodSlot].map((expense) => (
+                        <article className="recurring-row" key={expense.id}>
+                          <label>
+                            Name
+                            <input value={expense.merchant} onChange={(event) => updateRecurringExpense(expense.id, "merchant", event.target.value)} />
+                          </label>
+                          <label>
+                            Amount
+                            <input type="number" step="0.01" value={expense.amount} onChange={(event) => updateRecurringExpense(expense.id, "amount", Number(event.target.value))} />
+                          </label>
+                          <label>
+                            Category
+                            <select value={expense.category} onChange={(event) => updateRecurringExpense(expense.id, "category", event.target.value)}>
+                              {categories.map((category) => <option key={category}>{category}</option>)}
+                            </select>
+                          </label>
+                          <label>
+                            Subcategory
+                            <select value={expense.subcategory} onChange={(event) => updateRecurringExpense(expense.id, "subcategory", event.target.value)}>
+                              {(categorySubcategories[expense.category] ?? []).map((subcategory) => <option key={subcategory}>{subcategory}</option>)}
+                            </select>
+                          </label>
+                          <label>
+                            Account
+                            <select value={expense.account} onChange={(event) => updateRecurringExpense(expense.id, "account", event.target.value)}>
+                              {accounts.map((account) => <option key={account}>{account}</option>)}
+                            </select>
+                          </label>
+                          <button type="button" className="delete-button recurring-delete" onClick={() => deleteRecurringExpense(expense.id)}>x</button>
+                        </article>
+                      ))}
+                    </div>
+                    <form className="recurring-add-form" onSubmit={(event) => addRecurringExpense(event, periodSlot)}>
+                      <h3>Add {periodSlot} recurring item</h3>
+                      <div className="field-grid">
+                        <label>
+                          Name
+                          <input name="merchant" required />
+                        </label>
+                        <label>
+                          Amount
+                          <input name="amount" type="number" step="0.01" required />
+                        </label>
+                        <label>
+                          Category
+                          <select
+                            name="category"
+                            value={recurringCategories[periodSlot]}
+                            onChange={(event) => setRecurringCategories((current) => ({ ...current, [periodSlot]: event.target.value }))}
+                            required
+                          >
+                            {categories.map((category) => <option key={category}>{category}</option>)}
+                          </select>
+                        </label>
+                        <label>
+                          Subcategory
+                          <select name="subcategory" required>
+                            {categorySubcategories[recurringCategories[periodSlot]].map((subcategory) => <option key={subcategory}>{subcategory}</option>)}
+                          </select>
+                        </label>
+                        <label>
+                          Account
+                          <select name="account" required>
+                            {accounts.map((account) => <option key={account}>{account}</option>)}
+                          </select>
+                        </label>
+                      </div>
+                      <button className="primary-button" type="submit">Save {periodSlot} item</button>
+                    </form>
+                  </section>
                 ))}
               </div>
-
-              <form className="recurring-add-form" onSubmit={addRecurringExpense}>
-                <h3>Add recurring item</h3>
-                <div className="field-grid">
-                  <label>
-                    Period
-                    <select name="periodSlot" defaultValue={activePeriodSlot}>
-                      <option value="PP1">PP1</option>
-                      <option value="PP2">PP2</option>
-                    </select>
-                  </label>
-                  <label>
-                    Name
-                    <input name="merchant" required />
-                  </label>
-                  <label>
-                    Amount
-                    <input name="amount" type="number" step="0.01" required />
-                  </label>
-                  <label>
-                    Category
-                    <select name="category" value={recurringCategory} onChange={(event) => setRecurringCategory(event.target.value)} required>
-                      {categories.map((category) => <option key={category}>{category}</option>)}
-                    </select>
-                  </label>
-                  <label>
-                    Subcategory
-                    <select name="subcategory" required>
-                      {categorySubcategories[recurringCategory].map((subcategory) => <option key={subcategory}>{subcategory}</option>)}
-                    </select>
-                  </label>
-                  <label>
-                    Account
-                    <select name="account" required>
-                      {accounts.map((account) => <option key={account}>{account}</option>)}
-                    </select>
-                  </label>
-                </div>
-                <button className="primary-button" type="submit">Save recurring item</button>
-              </form>
             </div>
           </section>
         </div>
@@ -1053,11 +1077,61 @@ function buildPayPeriods(month: string) {
 
 function defaultDateForPayPeriod(payPeriod: string) {
   const [year, month, slot] = payPeriod.split("-");
-  return `${year}-${month}-${slot === "PP2" ? "16" : "01"}`;
+  const payDate = slot === "PP2"
+    ? previousWeekday(new Date(Number(year), Number(month) - 1, 15))
+    : previousWeekday(new Date(Number(year), Number(month), 0));
+
+  return isoLocalDate(payDate);
 }
 
 function sum(transactions: Transaction[]) {
   return transactions.reduce((total, transaction) => total + transaction.amount, 0);
+}
+
+function previousWeekday(date: Date) {
+  const weekday = date.getDay();
+
+  if (weekday === 6) {
+    date.setDate(date.getDate() - 1);
+  } else if (weekday === 0) {
+    date.setDate(date.getDate() - 2);
+  }
+
+  return date;
+}
+
+function isoLocalDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function compareTransactions(a: Transaction, b: Transaction) {
+  const dateOrder = a.date.localeCompare(b.date);
+
+  if (dateOrder !== 0) {
+    return dateOrder;
+  }
+
+  return categorySortRank(a.category) - categorySortRank(b.category);
+}
+
+function compareRecurringExpenses(a: RecurringExpense, b: RecurringExpense) {
+  const categoryOrder = categorySortRank(a.category) - categorySortRank(b.category);
+
+  if (categoryOrder !== 0) {
+    return categoryOrder;
+  }
+
+  return a.merchant.localeCompare(b.merchant);
+}
+
+function categorySortRank(category: string) {
+  if (category === "Income") return 0;
+  if (category === "Bills") return 1;
+  return 2;
 }
 
 function money(value: number) {
