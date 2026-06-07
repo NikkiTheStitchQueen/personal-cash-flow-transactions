@@ -57,7 +57,7 @@ const categorySubcategories: Record<string, string[]> = {
 };
 
 const categories = Object.keys(categorySubcategories);
-const expenseTypes = ["Planned", "Necessary", "Regret", "Impulse"];
+const expenseTypes = ["Planned", "Necessary", "Regret", "Impulse", "Worth It"];
 
 const initialState: AppState = {
   activeMonth: currentMonth(),
@@ -132,6 +132,8 @@ export default function TransactionsPage() {
 
   function addTransaction(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const saveAndAddAnother = submitter?.value === "add-another";
     const form = new FormData(event.currentTarget);
     const amount = Number(form.get("amount"));
     const paid = form.get("paid") === "Yes";
@@ -164,7 +166,9 @@ export default function TransactionsPage() {
     event.currentTarget.reset();
     setAddCategory("Income");
     setTransactionError("");
-    setIsAddModalOpen(false);
+    if (!saveAndAddAnother) {
+      setIsAddModalOpen(false);
+    }
   }
 
   function deleteTransaction(id: string) {
@@ -271,8 +275,15 @@ export default function TransactionsPage() {
           <h1>Spending Tracker</h1>
         </div>
         <div className="header-actions">
-          <button type="button" className="ghost-button" onClick={() => setShowFilters((current) => !current)}>
-            Search/Filter
+          <label className="compact-field">
+            Pay period
+            <select value={state.activePayPeriod} onChange={(event) => updateState((current) => ({ ...current, activePayPeriod: event.target.value }))}>
+              {payPeriods.map((period) => <option key={period} value={period}>{formatPayPeriod(period)}</option>)}
+            </select>
+          </label>
+          <button type="button" className="icon-button" aria-label="Search and filter" title="Search and filter" onClick={() => setShowFilters((current) => !current)}>
+            <SearchIcon />
+            <FilterIcon />
           </button>
         </div>
       </header>
@@ -282,12 +293,6 @@ export default function TransactionsPage() {
           <label>
             Month
             <input type="month" value={state.activeMonth} onChange={(event) => changeMonth(event.target.value)} />
-          </label>
-          <label>
-            Pay period
-            <select value={state.activePayPeriod} onChange={(event) => updateState((current) => ({ ...current, activePayPeriod: event.target.value }))}>
-              {payPeriods.map((period) => <option key={period} value={period}>{formatPayPeriod(period)}</option>)}
-            </select>
           </label>
           <label className="search-field">
             Search
@@ -388,8 +393,12 @@ export default function TransactionsPage() {
                         <td><input className="table-input" value={editingTransaction.notes} onChange={(event) => updateEditing("notes", event.target.value)} /></td>
                         <td className="actions-column">
                           <div className="row-actions">
-                            <button type="button" className="save-button" onClick={saveEditing}>Save</button>
-                            <button type="button" className="delete-button" onClick={cancelEditing}>Cancel</button>
+                            <button type="button" className="icon-button save-icon-button" aria-label="Save transaction" title="Save" onClick={saveEditing}>
+                              <CheckIcon />
+                            </button>
+                            <button type="button" className="icon-button cancel-icon-button" aria-label="Cancel editing" title="Cancel" onClick={cancelEditing}>
+                              <XIcon />
+                            </button>
                           </div>
                           {editingError && <div className="action-error">{editingError}</div>}
                         </td>
@@ -420,7 +429,9 @@ export default function TransactionsPage() {
                       <td>{transaction.notes}</td>
                       <td className="actions-column">
                         <div className="row-actions">
-                          <button type="button" className="ghost-button compact-button" onClick={() => startEditing(transaction)}>Edit</button>
+                          <button type="button" className="icon-button" aria-label="Edit transaction" title="Edit" onClick={() => startEditing(transaction)}>
+                            <PencilIcon />
+                          </button>
                           <button type="button" className="delete-button" onClick={() => deleteTransaction(transaction.id)}>x</button>
                         </div>
                       </td>
@@ -515,7 +526,8 @@ export default function TransactionsPage() {
               </div>
               {transactionError && <div className="form-error">{transactionError}</div>}
               <div className="modal-actions">
-                <button className="primary-button" type="submit">Save transaction</button>
+                <button className="primary-button" type="submit" value="close">Save transaction</button>
+                <button className="ghost-button" type="submit" value="add-another">Save and add another</button>
                 <button className="ghost-button" type="button" onClick={() => setIsAddModalOpen(false)}>Cancel</button>
               </div>
             </form>
@@ -533,6 +545,51 @@ function Metric({ label, value, tone }: { label: string; value: string; tone: "g
       <span>{label}</span>
       <strong className={`${tone}-text`}>{value}</strong>
     </article>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <circle cx="11" cy="11" r="7" />
+      <path d="m16.5 16.5 4 4" />
+    </svg>
+  );
+}
+
+function FilterIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M4 6h16" />
+      <path d="M7 12h10" />
+      <path d="M10 18h4" />
+    </svg>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="m20 6-11 11-5-5" />
+    </svg>
+  );
+}
+
+function XIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </svg>
   );
 }
 

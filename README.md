@@ -8,7 +8,7 @@ This is the reset version of the personal cash flow app. It intentionally contai
 - Two pay periods per month, such as `June 2026 PP1` and `June 2026 PP2`
 - Accounts from the brief: Chase Checking, Sapphire, Amazon, VZW, Kroger, Paypal
 - Category and subcategory tracking
-- Optional type of expense tracking: Planned, Necessary, Regret, or Impulse
+- Optional type of expense tracking: Planned, Necessary, Regret, Impulse, or Worth It
 - Positive amounts for income and negative amounts for spending
 - Account paid status and paid date tracking
 - Validation that paid transactions include a paid date

@@ -84,11 +84,12 @@ h2 {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  align-items: flex-end;
   justify-content: flex-end;
 }
 
 .toolbar {
-  grid-template-columns: 180px 220px minmax(220px, 1fr) auto;
+  grid-template-columns: 180px minmax(220px, 1fr) auto;
   margin-bottom: 16px;
   padding: 14px;
   background: var(--panel);
@@ -111,6 +112,10 @@ label {
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
+}
+
+.compact-field {
+  width: 220px;
 }
 
 input,
@@ -240,6 +245,7 @@ td.actions-column {
 .ghost-button,
 .delete-button,
 .save-button,
+.icon-button,
 .status {
   min-height: 38px;
   border: 1px solid var(--line);
@@ -247,6 +253,34 @@ td.actions-column {
   padding: 8px 12px;
   background: white;
   color: var(--ink);
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 42px;
+  min-width: 42px;
+  padding: 8px;
+}
+
+.icon-button svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.save-icon-button {
+  color: var(--good);
+}
+
+.cancel-icon-button {
+  color: var(--danger);
 }
 
 .primary-button {
@@ -444,6 +478,11 @@ td.actions-column {
   .toolbar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .compact-field {
+    width: min(260px, 100%);
+  }
+
 }
 
 @media (max-width: 760px) {
@@ -460,5 +499,11 @@ td.actions-column {
 
   .filter-actions {
     justify-content: stretch;
+  }
+
+  .icon-button {
+    width: 36px;
+    min-width: 36px;
+    padding: 7px;
   }
 }
