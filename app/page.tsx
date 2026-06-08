@@ -544,6 +544,7 @@ export default function TransactionsPage() {
                   <th>Subcategory</th>
                   <th>Account</th>
                   <th>Paid</th>
+                  <th>Paid date</th>
                   <th className="actions-column">Actions</th>
                 </tr>
               </thead>
@@ -580,6 +581,10 @@ export default function TransactionsPage() {
                             <option>No</option>
                           </select>
                         </td>
+                        <td className={hasPaidDateError ? "validation-cell" : ""}>
+                          <input className="table-input" type="date" value={editingTransaction.paidDate} onChange={(event) => updateEditing("paidDate", event.target.value)} />
+                          {hasPaidDateError && <span className="cell-warning">Required</span>}
+                        </td>
                         <td className="actions-column">
                           <div className="row-detail-fields">
                             <label>
@@ -588,11 +593,6 @@ export default function TransactionsPage() {
                                 <option value="">None</option>
                                 {expenseTypes.map((expenseType) => <option key={expenseType}>{expenseType}</option>)}
                               </select>
-                            </label>
-                            <label className={hasPaidDateError ? "validation-cell" : ""}>
-                              Paid date
-                              <input className="table-input" type="date" value={editingTransaction.paidDate} onChange={(event) => updateEditing("paidDate", event.target.value)} />
-                              {hasPaidDateError && <span className="cell-warning">Required</span>}
                             </label>
                             <label>
                               Notes
@@ -629,6 +629,9 @@ export default function TransactionsPage() {
                           {transaction.paid ? "Yes" : "No"}
                         </button>
                       </td>
+                      <td className={needsPaidDateReview ? "validation-cell" : ""}>
+                        {transaction.paidDate ? formatDate(transaction.paidDate) : needsPaidDateReview ? <span className="cell-warning">Review</span> : ""}
+                      </td>
                       <td className="actions-column">
                         <div className="row-actions">
                           <div className="transaction-detail-menu">
@@ -650,12 +653,6 @@ export default function TransactionsPage() {
                                     <dd>{transaction.expenseType || "None"}</dd>
                                   </div>
                                   <div>
-                                    <dt>Paid date</dt>
-                                    <dd className={needsPaidDateReview ? "danger-text" : ""}>
-                                      {transaction.paidDate ? formatDate(transaction.paidDate) : needsPaidDateReview ? "Review" : "None"}
-                                    </dd>
-                                  </div>
-                                  <div>
                                     <dt>Notes</dt>
                                     <dd>{transaction.notes || "None"}</dd>
                                   </div>
@@ -673,7 +670,7 @@ export default function TransactionsPage() {
                   );
                 }) : (
                   <tr>
-                    <td colSpan={8}><div className="empty-state">No transactions for this pay period yet.</div></td>
+                    <td colSpan={9}><div className="empty-state">No transactions for this pay period yet.</div></td>
                   </tr>
                 )}
               </tbody>
