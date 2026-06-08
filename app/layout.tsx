@@ -3,7 +3,10 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Transactions | Personal Cash Flow",
-  description: "Manual local-first transaction tracking"
+  description: "Manual local-first transaction tracking",
+  icons: {
+    icon: "/favicon.ico"
+  }
 };
 
 export const viewport: Viewport = {
