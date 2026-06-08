@@ -224,10 +224,11 @@ export default function TransactionsPage() {
 
   const accountTotals = accounts.map((account) => {
     const accountTransactions = periodTransactions.filter((transaction) => transaction.account === account);
+    const unpaidTransactions = accountTransactions.filter((transaction) => !transaction.paid);
     return {
       account,
-      total: sum(accountTransactions),
-      unpaid: accountTransactions.filter((transaction) => !transaction.paid).length
+      total: sum(unpaidTransactions),
+      unpaid: unpaidTransactions.length
     };
   });
 
