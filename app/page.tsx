@@ -730,13 +730,6 @@ export default function TransactionsPage() {
                   </select>
                 </label>
                 <label>
-                  Type of expense
-                  <select name="expenseType">
-                    <option value="">None</option>
-                    {expenseTypes.map((expenseType) => <option key={expenseType}>{expenseType}</option>)}
-                  </select>
-                </label>
-                <label>
                   Account
                   <select name="account" defaultValue="" required>
                     <option value="">Select account</option>
