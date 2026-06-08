@@ -788,8 +788,8 @@ td.actions-column {
   }
 
   .modal-backdrop {
-    align-items: end;
-    place-items: end stretch;
+    align-items: start;
+    place-items: start stretch;
     padding: 0;
   }
 
@@ -797,9 +797,9 @@ td.actions-column {
     width: 100%;
     max-height: 100dvh;
     border-right: 0;
-    border-bottom: 0;
+    border-top: 0;
     border-left: 0;
-    border-radius: 8px 8px 0 0;
+    border-radius: 0 0 8px 8px;
   }
 
   .modal-heading {

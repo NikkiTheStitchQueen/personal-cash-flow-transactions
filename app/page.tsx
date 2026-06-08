@@ -425,22 +425,6 @@ export default function TransactionsPage() {
     setIsRecurringModalOpen(false);
   }
 
-  function loadExamples() {
-    const month = state.activeMonth;
-    updateState((current) => ({
-      ...current,
-      transactions: [
-        makeTransaction(`${month}-PP1`, `${month}-01`, "Paycheck", 3250, "Income", "Income", "", "Chase Checking", true),
-        makeTransaction(`${month}-PP1`, `${month}-01`, "Kroger", -82.13, "Food", "Groceries", "Necessary", "Sapphire", true),
-        makeTransaction(`${month}-PP1`, `${month}-02`, "Netflix", -15.99, "Entertainment", "Subscriptions", "Planned", "Sapphire", false),
-        makeTransaction(`${month}-PP1`, `${month}-04`, "VZW", -130, "Bills", "Utilities", "Planned", "VZW", false),
-        makeTransaction(`${month}-PP2`, `${month}-16`, "Paycheck", 3250, "Income", "Income", "", "Chase Checking", true),
-        makeTransaction(`${month}-PP2`, `${month}-17`, "Mortgage", -1850, "Bills", "Mortgage", "Planned", "Chase Checking", false),
-        makeTransaction(`${month}-PP2`, `${month}-18`, "Kids Activities", -260, "Activities", "Hudson", "Planned", "Chase Checking", false)
-      ]
-    }));
-  }
-
   function exportCsv() {
     const header = ["Pay Period", "Date", "Merchant", "Amount", "Category", "Subcategory", "Type of Expense", "Account", "Account Paid?", "Paid Date", "Notes"];
     const rows = state.transactions.map((transaction) => [
@@ -505,12 +489,12 @@ export default function TransactionsPage() {
                 >
                   Recurring
                 </button>
+                <form action="/api/logout" method="post">
+                  <button type="submit" className="ghost-button">Log out</button>
+                </form>
               </div>
             )}
           </div>
-          <form action="/api/logout" method="post">
-            <button type="submit" className="ghost-button">Log out</button>
-          </form>
         </div>
       </header>
 
@@ -525,7 +509,6 @@ export default function TransactionsPage() {
             <input value={search} onChange={(event) => setSearch(event.target.value)} type="search" placeholder="Merchant, category, account, notes" />
           </label>
           <div className="filter-actions" aria-label="Data tools">
-            <button type="button" className="ghost-button" onClick={loadExamples}>Load examples</button>
             <button type="button" className="ghost-button" onClick={exportCsv}>Export CSV</button>
           </div>
         </section>
@@ -963,33 +946,6 @@ function XIcon() {
       <path d="m6 6 12 12" />
     </svg>
   );
-}
-
-function makeTransaction(
-  payPeriod: string,
-  date: string,
-  merchant: string,
-  amount: number,
-  category: string,
-  subcategory: string,
-  expenseType: string,
-  account: string,
-  paid: boolean
-): Transaction {
-  return {
-    id: crypto.randomUUID(),
-    payPeriod,
-    date,
-    merchant,
-    amount,
-    category,
-    subcategory,
-    expenseType,
-    account,
-    paid,
-    paidDate: paid ? date : "",
-    notes: ""
-  };
 }
 
 function recurring(
