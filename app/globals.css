@@ -133,7 +133,8 @@ h2 {
 }
 
 .toolbar {
-  grid-template-columns: 180px minmax(220px, 1fr) auto;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: end;
   margin-bottom: 16px;
   padding: 14px;
   background: var(--panel);
@@ -174,7 +175,7 @@ select {
 }
 
 .metric-grid {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   margin-top: 16px;
 }
 
@@ -651,7 +652,7 @@ td.actions-column {
 }
 
 .account-strip {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   margin-bottom: 16px;
 }
 
@@ -669,6 +670,14 @@ td.actions-column {
 
 .account-card small {
   color: var(--muted);
+}
+
+.balance-card {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+}
+
+.mobile-balance-card {
+  display: none;
 }
 
 .login-screen {
@@ -709,7 +718,7 @@ td.actions-column {
   }
 
   .account-strip {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .metric-grid {
@@ -772,6 +781,15 @@ td.actions-column {
   }
 
   .desktop-recurring-button {
+    display: none;
+  }
+
+  .mobile-balance-card {
+    display: grid;
+    grid-column: 1 / -1;
+  }
+
+  .desktop-balance-card {
     display: none;
   }
 

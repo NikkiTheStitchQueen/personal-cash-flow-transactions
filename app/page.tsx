@@ -38,6 +38,7 @@ type AppState = {
 };
 
 type PersistenceTarget = "local" | "database";
+type TransactionViewFilter = "unpaid" | "payPeriod";
 
 const STORAGE_KEY = "personal-cash-flow-transactions-v1";
 
@@ -134,6 +135,7 @@ export default function TransactionsPage() {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showMobileSummary, setShowMobileSummary] = useState(false);
   const [openTransactionDetailsId, setOpenTransactionDetailsId] = useState<string | null>(null);
+  const [transactionViewFilter, setTransactionViewFilter] = useState<TransactionViewFilter>("unpaid");
   const [transactionError, setTransactionError] = useState("");
   const [editingError, setEditingError] = useState("");
   const [hydrated, setHydrated] = useState(false);
@@ -204,8 +206,10 @@ export default function TransactionsPage() {
     PP1: state.recurringExpenses.filter((expense) => expense.periodSlot === "PP1").sort(compareRecurringExpenses),
     PP2: state.recurringExpenses.filter((expense) => expense.periodSlot === "PP2").sort(compareRecurringExpenses)
   };
-  const visibleTransactions = state.transactions
-    .filter((transaction) => transaction.payPeriod === state.activePayPeriod)
+  const filteredBaseTransactions = transactionViewFilter === "payPeriod"
+    ? state.transactions.filter((transaction) => transaction.payPeriod === state.activePayPeriod)
+    : state.transactions.filter((transaction) => !transaction.paid);
+  const visibleTransactions = filteredBaseTransactions
     .filter((transaction) =>
       [transaction.merchant, transaction.category, transaction.subcategory, transaction.expenseType, transaction.account, transaction.notes]
         .join(" ")
@@ -221,16 +225,21 @@ export default function TransactionsPage() {
   const unpaidCount = periodTransactions.filter((transaction) => !transaction.paid).length;
   const transactionCount = periodTransactions.length;
   const balance = startingBalance + sum(state.transactions);
+  const allUnpaidTransactions = state.transactions.filter((transaction) => !transaction.paid);
+  const visibleHeading = transactionViewFilter === "payPeriod" ? formatPayPeriod(state.activePayPeriod) : "Unpaid transactions";
+  const visibleDescription = transactionViewFilter === "payPeriod"
+    ? `${visibleTransactions.length} transactions shown`
+    : `${visibleTransactions.length} unpaid items across all pay periods`;
 
   const accountTotals = accounts.map((account) => {
-    const accountTransactions = periodTransactions.filter((transaction) => transaction.account === account);
-    const unpaidTransactions = accountTransactions.filter((transaction) => !transaction.paid);
+    const unpaidTransactions = allUnpaidTransactions.filter((transaction) => transaction.account === account);
+    const total = sum(unpaidTransactions);
     return {
       account,
-      total: sum(unpaidTransactions),
+      total,
       unpaid: unpaidTransactions.length
     };
-  });
+  }).sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
 
   function updateState(updater: (current: AppState) => AppState) {
     setState((current) => updater(current));
@@ -453,12 +462,11 @@ export default function TransactionsPage() {
         </div>
         <div className="header-actions">
           <button type="button" className="primary-button quick-add-button" onClick={() => setIsAddModalOpen(true)}>Add transaction</button>
-          <label className="compact-field">
-            Pay period
-            <select value={state.activePayPeriod} onChange={(event) => updateState((current) => ({ ...current, activePayPeriod: event.target.value }))}>
-              {payPeriods.map((period) => <option key={period} value={period}>{formatPayPeriod(period)}</option>)}
-            </select>
-          </label>
+          <article className="account-card balance-card mobile-balance-card">
+            <strong>Balance</strong>
+            <span className={balance >= 0 ? "good-text" : "danger-text"}>{money(balance)}</span>
+            <small>Available to spend</small>
+          </article>
           <button type="button" className="icon-button" aria-label="Search and filter" title="Search and filter" onClick={() => setShowFilters((current) => !current)}>
             <SearchIcon />
             <FilterIcon />
@@ -502,6 +510,21 @@ export default function TransactionsPage() {
       {showFilters && (
         <section className="toolbar" aria-label="Transaction controls">
           <label>
+            Show
+            <select value={transactionViewFilter} onChange={(event) => setTransactionViewFilter(event.target.value as TransactionViewFilter)}>
+              <option value="unpaid">Unpaid items</option>
+              <option value="payPeriod">Selected pay period</option>
+            </select>
+          </label>
+          {transactionViewFilter === "payPeriod" && (
+            <label>
+              Selected period
+              <select value={state.activePayPeriod} onChange={(event) => updateState((current) => ({ ...current, activePayPeriod: event.target.value }))}>
+                {payPeriods.map((period) => <option key={period} value={period}>{formatPayPeriod(period)}</option>)}
+              </select>
+            </label>
+          )}
+          <label>
             Month
             <input type="month" value={state.activeMonth} onChange={(event) => changeMonth(event.target.value)} />
           </label>
@@ -516,6 +539,11 @@ export default function TransactionsPage() {
       )}
 
       <section className={showMobileSummary ? "account-strip mobile-summary-open" : "account-strip"} aria-label="Account summary">
+        <article className="account-card balance-card desktop-balance-card">
+          <strong>Balance</strong>
+          <span className={balance >= 0 ? "good-text" : "danger-text"}>{money(balance)}</span>
+          <small>Available to spend</small>
+        </article>
         {accountTotals.map((item) => (
           <article className="account-card" key={item.account}>
             <strong>{item.account}</strong>
@@ -529,8 +557,8 @@ export default function TransactionsPage() {
         <section className="table-panel">
           <div className="panel-heading">
             <div>
-              <h2>{formatPayPeriod(state.activePayPeriod)}</h2>
-              <p>{visibleTransactions.length} transactions shown</p>
+              <h2>{visibleHeading}</h2>
+              <p>{visibleDescription}</p>
             </div>
           </div>
           <div className="table-wrap">
@@ -670,7 +698,7 @@ export default function TransactionsPage() {
                   );
                 }) : (
                   <tr>
-                    <td colSpan={9}><div className="empty-state">No transactions for this pay period yet.</div></td>
+                    <td colSpan={9}><div className="empty-state">{transactionViewFilter === "payPeriod" ? "No transactions for this pay period yet." : "No unpaid transactions yet."}</div></td>
                   </tr>
                 )}
               </tbody>
@@ -685,7 +713,6 @@ export default function TransactionsPage() {
         <Metric label="Spending" value={money(periodSpending)} tone="danger" />
         <Metric label="Unpaid items" value={String(unpaidCount)} tone={unpaidCount ? "warn" : "good"} />
         <Metric label="Total transactions" value={String(transactionCount)} tone="good" />
-        <Metric label="Balance" value={money(balance)} tone={balance >= 0 ? "good" : "danger"} />
       </section>
 
       {isAddModalOpen && (
