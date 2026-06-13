@@ -685,13 +685,15 @@ export default function TransactionsPage() {
                                     <dd>{transaction.notes || "None"}</dd>
                                   </div>
                                 </dl>
+                                <button type="button" className="menu-delete-button" onClick={() => deleteTransaction(transaction.id)}>
+                                  Delete transaction
+                                </button>
                               </div>
                             )}
                           </div>
                           <button type="button" className="icon-button" aria-label="Edit transaction" title="Edit" onClick={() => startEditing(transaction)}>
                             <PencilIcon />
                           </button>
-                          <button type="button" className="delete-button" onClick={() => deleteTransaction(transaction.id)}>x</button>
                         </div>
                       </td>
                     </tr>

@@ -212,6 +212,7 @@ select {
 
 .entry-panel,
 .table-panel {
+  min-width: 0;
   padding: 18px;
 }
 
@@ -251,12 +252,16 @@ select {
 }
 
 .table-wrap {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 table {
   width: 100%;
-  min-width: 1060px;
+  min-width: 1000px;
   border-collapse: collapse;
 }
 
@@ -284,8 +289,8 @@ td:nth-child(3) {
   position: sticky;
   right: 0;
   z-index: 2;
-  width: 168px;
-  min-width: 168px;
+  width: 112px;
+  min-width: 112px;
   background: var(--panel);
 }
 
@@ -428,6 +433,19 @@ td.actions-column {
   color: var(--ink);
   font-size: 13px;
   overflow-wrap: anywhere;
+}
+
+.menu-delete-button {
+  width: 100%;
+  min-height: 38px;
+  margin-top: 12px;
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, var(--line));
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: white;
+  color: var(--danger);
+  font-weight: 800;
+  text-align: left;
 }
 
 .row-detail-fields {
@@ -822,6 +840,22 @@ td.actions-column {
 
   .panel-actions {
     justify-content: stretch;
+  }
+
+  .list-section,
+  .table-panel,
+  .table-wrap {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .table-panel {
+    padding: 14px;
+  }
+
+  .table-wrap {
+    overflow-x: scroll;
+    overscroll-behavior-x: contain;
   }
 
   .icon-button {
