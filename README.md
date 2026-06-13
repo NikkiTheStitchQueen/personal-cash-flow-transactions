@@ -10,8 +10,7 @@ This is the reset version of the personal cash flow app. It intentionally contai
 - Category and subcategory tracking
 - Optional type of expense tracking: Planned, Necessary, Regret, Impulse, or Worth It
 - Positive amounts for income and negative amounts for spending
-- Account paid status and paid date tracking
-- Validation that paid transactions include a paid date
+- Account paid status and transaction notes
 - Recurring expense templates assigned to PP1 or PP2
 - Copy recurring items for the active pay period into transactions
 - Search, period totals, account summaries

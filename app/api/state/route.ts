@@ -166,8 +166,8 @@ export async function GET() {
       expenseType: String(row.expense_type ?? ""),
       account: String(row.account),
       paid: Boolean(row.paid),
-      paidDate: row.paid_date ? isoDate(row.paid_date) : "",
-      notes: String(row.notes ?? "")
+      paidDate: "",
+      notes: row.paid_date ? isoDate(row.paid_date) : String(row.notes ?? "")
     })),
     recurringExpenses: recurringExpenses.map((row) => ({
       id: String(row.id),
@@ -234,8 +234,8 @@ export async function PUT(request: Request) {
         ${transaction.expenseType},
         ${transaction.account},
         ${transaction.paid},
-        ${transaction.paidDate || null},
-        ${transaction.notes},
+        ${null},
+        ${transaction.paidDate || transaction.notes},
         now()
       )
     `;

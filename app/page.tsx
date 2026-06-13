@@ -269,7 +269,6 @@ export default function TransactionsPage() {
     const amount = Number(form.get("amount"));
     const paid = form.get("paid") === "Yes";
     const transactionDate = String(form.get("date"));
-    const paidDate = paid ? transactionDate : "";
 
     const transaction: Transaction = {
       id: crypto.randomUUID(),
@@ -282,7 +281,7 @@ export default function TransactionsPage() {
       expenseType: String(form.get("expenseType") ?? ""),
       account: String(form.get("account")),
       paid,
-      paidDate,
+      paidDate: "",
       notes: String(form.get("notes") ?? "").trim()
     };
 
@@ -346,10 +345,6 @@ export default function TransactionsPage() {
 
   function saveEditing() {
     if (!editingTransaction) return;
-    if (editingTransaction.paid && !editingTransaction.paidDate) {
-      setEditingError("Paid transactions need a paid date.");
-      return;
-    }
 
     updateState((current) => ({
       ...current,
@@ -423,7 +418,7 @@ export default function TransactionsPage() {
         expenseType: expense.expenseType,
         account: expense.account,
         paid,
-        paidDate: paid ? transactionDate : "",
+        paidDate: "",
         notes: "Recurring"
       };
     });
@@ -436,7 +431,7 @@ export default function TransactionsPage() {
   }
 
   function exportCsv() {
-    const header = ["Pay Period", "Date", "Merchant", "Amount", "Category", "Subcategory", "Type of Expense", "Account", "Account Paid?", "Paid Date", "Notes"];
+    const header = ["Pay Period", "Date", "Merchant", "Amount", "Category", "Subcategory", "Type of Expense", "Account", "Account Paid?", "Notes"];
     const rows = state.transactions.map((transaction) => [
       transaction.payPeriod,
       transaction.date,
@@ -447,7 +442,6 @@ export default function TransactionsPage() {
       transaction.expenseType,
       transaction.account,
       transaction.paid ? "Yes" : "No",
-      transaction.paidDate,
       transaction.notes
     ]);
     download("transactions.csv", [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\n"), "text/csv");
@@ -572,7 +566,7 @@ export default function TransactionsPage() {
                   <th>Subcategory</th>
                   <th>Account</th>
                   <th>Paid</th>
-                  <th>Paid date</th>
+                  <th>Notes</th>
                   <th className="actions-column">Actions</th>
                 </tr>
               </thead>
@@ -581,8 +575,6 @@ export default function TransactionsPage() {
                   const isEditing = editingId === transaction.id && editingTransaction;
 
                   if (isEditing) {
-                    const hasPaidDateError = editingTransaction.paid && !editingTransaction.paidDate;
-
                     return (
                       <tr className="editing-row" key={transaction.id}>
                         <td><input className="table-input" type="date" value={editingTransaction.date} onChange={(event) => updateEditing("date", event.target.value)} /></td>
@@ -609,9 +601,8 @@ export default function TransactionsPage() {
                             <option>No</option>
                           </select>
                         </td>
-                        <td className={hasPaidDateError ? "validation-cell" : ""}>
-                          <input className="table-input" type="date" value={editingTransaction.paidDate} onChange={(event) => updateEditing("paidDate", event.target.value)} />
-                          {hasPaidDateError && <span className="cell-warning">Required</span>}
+                        <td>
+                          <input className="table-input" value={editingTransaction.notes} onChange={(event) => updateEditing("notes", event.target.value)} />
                         </td>
                         <td className="actions-column">
                           <div className="row-detail-fields">
@@ -621,10 +612,6 @@ export default function TransactionsPage() {
                                 <option value="">None</option>
                                 {expenseTypes.map((expenseType) => <option key={expenseType}>{expenseType}</option>)}
                               </select>
-                            </label>
-                            <label>
-                              Notes
-                              <input className="table-input" value={editingTransaction.notes} onChange={(event) => updateEditing("notes", event.target.value)} />
                             </label>
                           </div>
                           <div className="row-actions">
@@ -641,7 +628,6 @@ export default function TransactionsPage() {
                     );
                   }
 
-                  const needsPaidDateReview = transaction.paid && !transaction.paidDate;
                   const isDetailsOpen = openTransactionDetailsId === transaction.id;
 
                   return (
@@ -657,9 +643,7 @@ export default function TransactionsPage() {
                           {transaction.paid ? "Yes" : "No"}
                         </button>
                       </td>
-                      <td className={needsPaidDateReview ? "validation-cell" : ""}>
-                        {transaction.paidDate ? formatDate(transaction.paidDate) : needsPaidDateReview ? <span className="cell-warning">Review</span> : ""}
-                      </td>
+                      <td>{transaction.notes}</td>
                       <td className="actions-column">
                         <div className="row-actions">
                           <div className="transaction-detail-menu">
@@ -679,10 +663,6 @@ export default function TransactionsPage() {
                                   <div>
                                     <dt>Type</dt>
                                     <dd>{transaction.expenseType || "None"}</dd>
-                                  </div>
-                                  <div>
-                                    <dt>Notes</dt>
-                                    <dd>{transaction.notes || "None"}</dd>
                                   </div>
                                 </dl>
                                 <button type="button" className="menu-delete-button" onClick={() => deleteTransaction(transaction.id)}>
@@ -995,7 +975,8 @@ function normalizeState(state: AppState): AppState {
       ...transaction,
       ...normalizeCategory(transaction.category, transaction.subcategory),
       expenseType: transaction.expenseType ?? "",
-      paidDate: transaction.paidDate ?? ""
+      notes: mergedPaidDateNote(transaction),
+      paidDate: ""
     })),
     recurringExpenses: (state.recurringExpenses ?? defaultRecurringExpenses).map((expense) => ({
       ...expense,
@@ -1005,6 +986,10 @@ function normalizeState(state: AppState): AppState {
       periodSlot: expense.periodSlot === "PP2" ? "PP2" : "PP1"
     }))
   };
+}
+
+function mergedPaidDateNote(transaction: Transaction) {
+  return transaction.paidDate ? transaction.paidDate : transaction.notes ?? "";
 }
 
 function loadLocalState() {
