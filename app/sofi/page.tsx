@@ -37,6 +37,8 @@ export default function SofiTransactionsPage() {
   const [editingTransaction, setEditingTransaction] = useState<SofiTransaction | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [viewFilter, setViewFilter] = useState<SofiViewFilter>("unpaid");
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showMobileSummary, setShowMobileSummary] = useState(false);
   const [openTransactionDetailsId, setOpenTransactionDetailsId] = useState<string | null>(null);
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
   const [selectedPaymentNote, setSelectedPaymentNote] = useState("");
@@ -272,6 +274,30 @@ export default function SofiTransactionsPage() {
         </div>
         <div className="header-actions">
           <button type="button" className="primary-button quick-add-button" onClick={() => setIsAddModalOpen(true)}>Add transaction</button>
+          <article className="account-card balance-card mobile-balance-card">
+            <strong>Balance</strong>
+            <span className={balance >= 0 ? "good-text" : "danger-text"}>{money(balance)}</span>
+            <small>Available to spend</small>
+          </article>
+          <div className="more-menu">
+            <button type="button" className="icon-button" aria-label="More options" title="More options" aria-expanded={showMoreMenu} onClick={() => setShowMoreMenu((current) => !current)}>
+              <DotsIcon />
+            </button>
+            {showMoreMenu && (
+              <div className="more-menu-panel">
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => {
+                    setShowMobileSummary((current) => !current);
+                    setShowMoreMenu(false);
+                  }}
+                >
+                  Summary
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -292,8 +318,8 @@ export default function SofiTransactionsPage() {
         </div>
       </section>
 
-      <section className="account-strip sofi-account-strip" aria-label="Account summary">
-        <article className="account-card balance-card">
+      <section className={showMobileSummary ? "account-strip sofi-account-strip mobile-summary-open" : "account-strip sofi-account-strip"} aria-label="Account summary">
+        <article className="account-card balance-card desktop-balance-card">
           <strong>Balance</strong>
           <span className={balance >= 0 ? "good-text" : "danger-text"}>{money(balance)}</span>
           <small>Available to spend</small>

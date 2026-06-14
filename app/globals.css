@@ -904,7 +904,6 @@ td.actions-column {
   }
 
   .sofi-account-strip {
-    display: grid;
     grid-template-columns: 1fr;
   }
 
