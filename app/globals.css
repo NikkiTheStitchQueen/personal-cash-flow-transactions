@@ -261,7 +261,7 @@ select {
 
 table {
   width: 100%;
-  min-width: 1000px;
+  min-width: 1052px;
   border-collapse: collapse;
 }
 
@@ -280,9 +280,21 @@ th {
   text-transform: uppercase;
 }
 
-th:nth-child(3),
-td:nth-child(3) {
+th:nth-child(4),
+td:nth-child(4) {
   text-align: right;
+}
+
+.select-column {
+  width: 52px;
+  min-width: 52px;
+  text-align: center;
+}
+
+.select-column input {
+  width: 18px;
+  min-height: 18px;
+  accent-color: var(--accent);
 }
 
 .actions-column {
@@ -446,6 +458,49 @@ td.actions-column {
   color: var(--danger);
   font-weight: 800;
   text-align: left;
+}
+
+.selection-bar {
+  position: fixed;
+  right: 24px;
+  bottom: 16px;
+  left: 24px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: min(760px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 12px 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.selection-bar > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.selection-bar span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.selection-bar strong {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.selection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .row-detail-fields {
@@ -856,6 +911,26 @@ td.actions-column {
   .table-wrap {
     overflow-x: scroll;
     overscroll-behavior-x: contain;
+  }
+
+  .selection-bar {
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    grid-template-columns: 1fr;
+    width: calc(100% - 24px);
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .selection-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .selection-actions > button {
+    width: 100%;
+    min-height: 44px;
   }
 
   .icon-button {

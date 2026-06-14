@@ -136,6 +136,7 @@ export default function TransactionsPage() {
   const [showMobileSummary, setShowMobileSummary] = useState(false);
   const [openTransactionDetailsId, setOpenTransactionDetailsId] = useState<string | null>(null);
   const [transactionViewFilter, setTransactionViewFilter] = useState<TransactionViewFilter>("unpaid");
+  const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
   const [transactionError, setTransactionError] = useState("");
   const [editingError, setEditingError] = useState("");
   const [hydrated, setHydrated] = useState(false);
@@ -201,6 +202,10 @@ export default function TransactionsPage() {
     return () => window.clearTimeout(timeout);
   }, [hydrated, persistenceTarget, state]);
 
+  useEffect(() => {
+    setSelectedTransactionIds([]);
+  }, [search, state.activeMonth, state.activePayPeriod, transactionViewFilter]);
+
   const payPeriods = useMemo(() => buildPayPeriods(state.activeMonth), [state.activeMonth]);
   const recurringExpenseGroups = {
     PP1: state.recurringExpenses.filter((expense) => expense.periodSlot === "PP1").sort(compareRecurringExpenses),
@@ -230,6 +235,8 @@ export default function TransactionsPage() {
   const visibleDescription = transactionViewFilter === "payPeriod"
     ? `${visibleTransactions.length} transactions shown`
     : `${visibleTransactions.length} unpaid items across all pay periods`;
+  const selectedTransactions = state.transactions.filter((transaction) => selectedTransactionIds.includes(transaction.id));
+  const selectedTotal = sum(selectedTransactions);
 
   const accountTotals = accounts.map((account) => {
     const unpaidTransactions = allUnpaidTransactions.filter((transaction) => transaction.account === account);
@@ -302,6 +309,7 @@ export default function TransactionsPage() {
       ...current,
       transactions: current.transactions.filter((transaction) => transaction.id !== id)
     }));
+    setSelectedTransactionIds((current) => current.filter((selectedId) => selectedId !== id));
     if (editingId === id) {
       cancelEditing();
     }
@@ -314,6 +322,27 @@ export default function TransactionsPage() {
         transaction.id === id ? { ...transaction, paid: !transaction.paid } : transaction
       )
     }));
+    setSelectedTransactionIds((current) => current.filter((selectedId) => selectedId !== id));
+  }
+
+  function toggleTransactionSelection(id: string) {
+    setSelectedTransactionIds((current) =>
+      current.includes(id)
+        ? current.filter((selectedId) => selectedId !== id)
+        : [...current, id]
+    );
+  }
+
+  function markSelectedPaid() {
+    const selectedIds = new Set(selectedTransactionIds);
+
+    updateState((current) => ({
+      ...current,
+      transactions: current.transactions.map((transaction) =>
+        selectedIds.has(transaction.id) ? { ...transaction, paid: true } : transaction
+      )
+    }));
+    setSelectedTransactionIds([]);
   }
 
   function startEditing(transaction: Transaction) {
@@ -559,6 +588,7 @@ export default function TransactionsPage() {
             <table>
               <thead>
                 <tr>
+                  <th className="select-column">Select</th>
                   <th>Date</th>
                   <th>Merchant</th>
                   <th>Amount</th>
@@ -577,6 +607,9 @@ export default function TransactionsPage() {
                   if (isEditing) {
                     return (
                       <tr className="editing-row" key={transaction.id}>
+                        <td className="select-column">
+                          <input type="checkbox" checked={selectedTransactionIds.includes(transaction.id)} disabled aria-label={`Select ${transaction.merchant}`} readOnly />
+                        </td>
                         <td><input className="table-input" type="date" value={editingTransaction.date} onChange={(event) => updateEditing("date", event.target.value)} /></td>
                         <td><input className="table-input" value={editingTransaction.merchant} onChange={(event) => updateEditing("merchant", event.target.value)} /></td>
                         <td><input className="table-input amount-input" type="number" step="0.01" value={editingTransaction.amount} onChange={(event) => updateEditing("amount", Number(event.target.value))} /></td>
@@ -632,6 +665,14 @@ export default function TransactionsPage() {
 
                   return (
                     <tr key={transaction.id}>
+                      <td className="select-column">
+                        <input
+                          type="checkbox"
+                          checked={selectedTransactionIds.includes(transaction.id)}
+                          aria-label={`Select ${transaction.merchant}`}
+                          onChange={() => toggleTransactionSelection(transaction.id)}
+                        />
+                      </td>
                       <td>{formatDate(transaction.date)}</td>
                       <td>{transaction.merchant}</td>
                       <td className={transaction.amount < 0 ? "danger-text" : "good-text"}>{money(transaction.amount)}</td>
@@ -680,7 +721,7 @@ export default function TransactionsPage() {
                   );
                 }) : (
                   <tr>
-                    <td colSpan={9}><div className="empty-state">{transactionViewFilter === "payPeriod" ? "No transactions for this pay period yet." : "No unpaid transactions yet."}</div></td>
+                    <td colSpan={10}><div className="empty-state">{transactionViewFilter === "payPeriod" ? "No transactions for this pay period yet." : "No unpaid transactions yet."}</div></td>
                   </tr>
                 )}
               </tbody>
@@ -696,6 +737,19 @@ export default function TransactionsPage() {
         <Metric label="Unpaid items" value={String(unpaidCount)} tone={unpaidCount ? "warn" : "good"} />
         <Metric label="Total transactions" value={String(transactionCount)} tone="good" />
       </section>
+
+      {selectedTransactions.length > 0 && (
+        <section className="selection-bar" aria-label="Selected transactions total">
+          <div>
+            <span>{selectedTransactions.length} selected</span>
+            <strong className={selectedTotal < 0 ? "danger-text" : "good-text"}>{money(selectedTotal)}</strong>
+          </div>
+          <div className="selection-actions">
+            <button type="button" className="ghost-button" onClick={() => setSelectedTransactionIds([])}>Clear selection</button>
+            <button type="button" className="primary-button" onClick={markSelectedPaid}>Mark Selected Paid</button>
+          </div>
+        </section>
+      )}
 
       {isAddModalOpen && (
         <div className="modal-backdrop" role="presentation">
