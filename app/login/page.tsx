@@ -1,9 +1,9 @@
 type LoginPageProps = {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const { error } = await searchParams;
+  const { error, next } = await searchParams;
   const errorMessage = error === "missing-password"
     ? "Set CASH_FLOW_TRACKER_PASSWORD before signing in."
     : error === "invalid"
@@ -19,6 +19,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </div>
 
         <form className="login-form" action="/api/login" method="post">
+          <input name="next" type="hidden" value={next ?? "/"} />
           <label>
             Password
             <input name="password" type="password" autoComplete="current-password" required autoFocus />

@@ -265,6 +265,10 @@ table {
   border-collapse: collapse;
 }
 
+.sofi-table {
+  min-width: 920px;
+}
+
 th,
 td {
   padding: 7px 8px;
@@ -738,6 +742,10 @@ td.actions-column {
   margin-bottom: 16px;
 }
 
+.sofi-account-strip {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
 .account-card {
   display: grid;
   gap: 6px;
@@ -760,6 +768,18 @@ td.actions-column {
 
 .mobile-balance-card {
   display: none;
+}
+
+.sofi-metric-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sofi-action-panel {
+  width: 148px;
+}
+
+.sofi-action-panel .menu-delete-button {
+  margin-top: 0;
 }
 
 .login-screen {
@@ -883,6 +903,11 @@ td.actions-column {
     display: none;
   }
 
+  .sofi-account-strip {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
   .account-strip.mobile-summary-open {
     display: grid;
   }
@@ -944,6 +969,10 @@ td.actions-column {
   .selection-actions > button {
     width: 100%;
     min-height: 44px;
+  }
+
+  .sofi-metric-grid {
+    grid-template-columns: 1fr;
   }
 
   .icon-button {

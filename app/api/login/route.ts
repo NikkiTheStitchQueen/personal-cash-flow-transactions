@@ -6,17 +6,24 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   const form = await request.formData();
   const password = String(form.get("password") ?? "");
+  const nextPath = safeNextPath(String(form.get("next") ?? "/"));
   const expectedPassword = getTrackerPassword();
 
   if (!expectedPassword) {
-    return NextResponse.redirect(new URL("/login?error=missing-password", request.url), 303);
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("error", "missing-password");
+    loginUrl.searchParams.set("next", nextPath);
+    return NextResponse.redirect(loginUrl, 303);
   }
 
   if (password !== expectedPassword) {
-    return NextResponse.redirect(new URL("/login?error=invalid", request.url), 303);
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("error", "invalid");
+    loginUrl.searchParams.set("next", nextPath);
+    return NextResponse.redirect(loginUrl, 303);
   }
 
-  const response = NextResponse.redirect(new URL("/", request.url), 303);
+  const response = NextResponse.redirect(new URL(nextPath, request.url), 303);
 
   response.cookies.set({
     name: authCookieName,
@@ -29,4 +36,8 @@ export async function POST(request: Request) {
   });
 
   return response;
+}
+
+function safeNextPath(value: string) {
+  return value.startsWith("/") && !value.startsWith("//") ? value : "/";
 }

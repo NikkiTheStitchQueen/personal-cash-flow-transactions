@@ -17,8 +17,9 @@ export async function middleware(request: NextRequest) {
   const isAuthenticated = session === await authSignature();
 
   if (pathname === "/login") {
+    const nextPath = safeNextPath(request.nextUrl.searchParams.get("next") || "/");
     return isAuthenticated
-      ? NextResponse.redirect(new URL("/", request.url))
+      ? NextResponse.redirect(new URL(nextPath, request.url))
       : NextResponse.next();
   }
 
@@ -36,7 +37,9 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/",
+    "/sofi",
     "/api/state/:path*",
+    "/api/sofi-state/:path*",
     "/login"
   ]
 };
@@ -47,6 +50,11 @@ function redirectToLogin(request: NextRequest, error?: string) {
   if (error) {
     loginUrl.searchParams.set("error", error);
   }
+  loginUrl.searchParams.set("next", `${request.nextUrl.pathname}${request.nextUrl.search}`);
 
   return NextResponse.redirect(loginUrl);
+}
+
+function safeNextPath(value: string) {
+  return value.startsWith("/") && !value.startsWith("//") ? value : "/";
 }
