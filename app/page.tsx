@@ -57,7 +57,6 @@ const categorySubcategories: Record<string, string[]> = {
   Car: ["Lexus", "Toyota"],
   Clothing: ["Holden", "Hudson", "Nikki", "Household"],
   Entertainment: ["General", "Subscriptions"],
-  Fitness: ["General"],
   Food: ["Dining & Misc Food", "Groceries"],
   Gas: ["Vehicle Fuel"],
   Gift: ["General"],
@@ -137,6 +136,7 @@ export default function TransactionsPage() {
   const [openTransactionDetailsId, setOpenTransactionDetailsId] = useState<string | null>(null);
   const [transactionViewFilter, setTransactionViewFilter] = useState<TransactionViewFilter>("unpaid");
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
+  const [selectedPaymentNote, setSelectedPaymentNote] = useState("");
   const [transactionError, setTransactionError] = useState("");
   const [editingError, setEditingError] = useState("");
   const [hydrated, setHydrated] = useState(false);
@@ -204,6 +204,7 @@ export default function TransactionsPage() {
 
   useEffect(() => {
     setSelectedTransactionIds([]);
+    setSelectedPaymentNote("");
   }, [search, state.activeMonth, state.activePayPeriod, transactionViewFilter]);
 
   const payPeriods = useMemo(() => buildPayPeriods(state.activeMonth), [state.activeMonth]);
@@ -335,14 +336,16 @@ export default function TransactionsPage() {
 
   function markSelectedPaid() {
     const selectedIds = new Set(selectedTransactionIds);
+    const paymentNote = selectedPaymentNote.trim();
 
     updateState((current) => ({
       ...current,
       transactions: current.transactions.map((transaction) =>
-        selectedIds.has(transaction.id) ? { ...transaction, paid: true } : transaction
+        selectedIds.has(transaction.id) ? { ...transaction, paid: true, notes: paymentNote } : transaction
       )
     }));
     setSelectedTransactionIds([]);
+    setSelectedPaymentNote("");
   }
 
   function startEditing(transaction: Transaction) {
@@ -448,7 +451,7 @@ export default function TransactionsPage() {
         account: expense.account,
         paid,
         paidDate: "",
-        notes: "Recurring"
+        notes: ""
       };
     });
 
@@ -744,8 +747,26 @@ export default function TransactionsPage() {
             <span>{selectedTransactions.length} selected</span>
             <strong className={selectedTotal < 0 ? "danger-text" : "good-text"}>{money(selectedTotal)}</strong>
           </div>
+          <label className="selection-note-field">
+            Notes
+            <input
+              value={selectedPaymentNote}
+              onChange={(event) => setSelectedPaymentNote(event.target.value)}
+              type="text"
+              placeholder="Payment date or memo"
+            />
+          </label>
           <div className="selection-actions">
-            <button type="button" className="ghost-button" onClick={() => setSelectedTransactionIds([])}>Clear selection</button>
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() => {
+                setSelectedTransactionIds([]);
+                setSelectedPaymentNote("");
+              }}
+            >
+              Clear
+            </button>
             <button type="button" className="primary-button" onClick={markSelectedPaid}>Mark Selected Paid</button>
           </div>
         </section>

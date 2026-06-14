@@ -496,6 +496,15 @@ td.actions-column {
   line-height: 1;
 }
 
+.selection-note-field {
+  flex: 1 1 220px;
+  max-width: 320px;
+}
+
+.selection-note-field input {
+  min-height: 38px;
+}
+
 .selection-actions {
   display: flex;
   flex-wrap: wrap;
@@ -926,6 +935,10 @@ td.actions-column {
   .selection-actions {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .selection-note-field {
+    max-width: none;
   }
 
   .selection-actions > button {
