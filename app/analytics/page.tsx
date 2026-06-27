@@ -3,9 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   type AppState,
-  buildPayPeriods,
   categories,
-  formatPayPeriod,
   initialState,
   loadLocalState,
   money,
@@ -25,7 +23,7 @@ const excludedAnalyticsAccounts = new Set(["sofi"]);
 
 export default function AnalyticsPage() {
   const [state, setState] = useState<AppState>(initialState);
-  const [selectedPayPeriod, setSelectedPayPeriod] = useState(initialState.activePayPeriod);
+  const [selectedMonth, setSelectedMonth] = useState(initialState.activeMonth);
   const [hydrated, setHydrated] = useState(false);
   const [persistenceTarget, setPersistenceTarget] = useState<PersistenceTarget>("local");
 
@@ -55,7 +53,7 @@ export default function AnalyticsPage() {
 
       const hydratedState = nextState ?? initialState;
       setState(hydratedState);
-      setSelectedPayPeriod(hydratedState.activePayPeriod);
+      setSelectedMonth(hydratedState.activeMonth);
       setPersistenceTarget(nextPersistenceTarget);
       setHydrated(true);
     }
@@ -67,26 +65,29 @@ export default function AnalyticsPage() {
     };
   }, []);
 
-  const payPeriods = useMemo(() => {
+  const months = useMemo(() => {
     const primaryTransactions = state.transactions.filter(isPrimaryAccountTransaction);
-    const periods = new Set([
-      ...buildPayPeriods(state.activeMonth),
-      state.activePayPeriod,
-      ...primaryTransactions.map((transaction) => transaction.payPeriod)
+    const transactionMonths = primaryTransactions
+      .map((transaction) => monthFromDate(transaction.date))
+      .filter(Boolean);
+    const availableMonths = new Set([
+      state.activeMonth,
+      selectedMonth,
+      ...transactionMonths
     ]);
 
-    return [...periods].filter(Boolean).sort((a, b) => b.localeCompare(a));
-  }, [state.activeMonth, state.activePayPeriod, state.transactions]);
+    return [...availableMonths].sort((a, b) => b.localeCompare(a));
+  }, [selectedMonth, state.activeMonth, state.transactions]);
 
-  const periodTransactions = useMemo(() => {
+  const monthTransactions = useMemo(() => {
     return state.transactions.filter((transaction) =>
-      transaction.payPeriod === selectedPayPeriod && isPrimaryAccountTransaction(transaction)
+      monthFromDate(transaction.date) === selectedMonth && isPrimaryAccountTransaction(transaction)
     );
-  }, [selectedPayPeriod, state.transactions]);
+  }, [selectedMonth, state.transactions]);
 
   const spendingTransactions = useMemo(() => {
-    return periodTransactions.filter((transaction) => transaction.amount < 0);
-  }, [periodTransactions]);
+    return monthTransactions.filter((transaction) => transaction.amount < 0);
+  }, [monthTransactions]);
 
   const categorySpend = useMemo(() => {
     return categories
@@ -119,7 +120,7 @@ export default function AnalyticsPage() {
     return largest;
   }, null);
   const categoriesWithSpending = categorySpend.filter((item) => item.total > 0).length;
-  const transactionCount = periodTransactions.length;
+  const transactionCount = monthTransactions.length;
 
   return (
     <main className="screen analytics-screen">
@@ -135,9 +136,9 @@ export default function AnalyticsPage() {
 
       <section className="toolbar analytics-toolbar" aria-label="Analytics controls">
         <label>
-          Pay period
-          <select aria-label="Pay period" value={selectedPayPeriod} onChange={(event) => setSelectedPayPeriod(event.target.value)}>
-            {payPeriods.map((period) => <option key={period} value={period}>{formatPayPeriod(period)}</option>)}
+          Month
+          <select aria-label="Month" value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)}>
+            {months.map((month) => <option key={month} value={month}>{formatMonth(month)}</option>)}
           </select>
         </label>
         <div className="analytics-source">
@@ -149,7 +150,7 @@ export default function AnalyticsPage() {
       <section className="table-panel analytics-panel">
         <div className="panel-heading">
           <div>
-            <h2>{formatPayPeriod(selectedPayPeriod)}</h2>
+            <h2>{formatMonth(selectedMonth)}</h2>
             <p>Spending totals by category</p>
           </div>
         </div>
@@ -172,6 +173,19 @@ export default function AnalyticsPage() {
 
 function isPrimaryAccountTransaction(transaction: { account: string }) {
   return !excludedAnalyticsAccounts.has(transaction.account.trim().toLowerCase());
+}
+
+function monthFromDate(date: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.slice(0, 7) : "";
+}
+
+function formatMonth(month: string) {
+  const [year, monthNumber] = month.split("-");
+
+  return new Date(Number(year), Number(monthNumber) - 1, 1).toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric"
+  });
 }
 
 function AnalyticsMetric({ label, value, tone }: { label: string; value: string; tone: "good" | "warn" | "danger" }) {

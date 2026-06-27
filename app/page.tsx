@@ -27,7 +27,7 @@ import {
 } from "./cash-flow";
 
 type PersistenceTarget = "local" | "database";
-type TransactionViewFilter = "unpaid" | "payPeriod";
+type TransactionViewFilter = "unpaid" | "month";
 
 export default function TransactionsPage() {
   const [state, setState] = useState<AppState>(initialState);
@@ -117,15 +117,15 @@ export default function TransactionsPage() {
   useEffect(() => {
     setSelectedTransactionIds([]);
     setSelectedPaymentNote("");
-  }, [search, state.activeMonth, state.activePayPeriod, transactionViewFilter]);
+  }, [search, state.activeMonth, transactionViewFilter]);
 
   const payPeriods = useMemo(() => buildPayPeriods(state.activeMonth), [state.activeMonth]);
   const recurringExpenseGroups = {
     PP1: state.recurringExpenses.filter((expense) => expense.periodSlot === "PP1").sort(compareRecurringExpenses),
     PP2: state.recurringExpenses.filter((expense) => expense.periodSlot === "PP2").sort(compareRecurringExpenses)
   };
-  const filteredBaseTransactions = transactionViewFilter === "payPeriod"
-    ? state.transactions.filter((transaction) => transaction.payPeriod === state.activePayPeriod)
+  const filteredBaseTransactions = transactionViewFilter === "month"
+    ? state.transactions.filter((transaction) => monthFromDate(transaction.date) === state.activeMonth)
     : state.transactions.filter((transaction) => !transaction.paid);
   const visibleTransactions = filteredBaseTransactions
     .filter((transaction) =>
@@ -136,18 +136,18 @@ export default function TransactionsPage() {
     )
     .sort(compareTransactions);
 
-  const periodTransactions = state.transactions.filter((transaction) => transaction.payPeriod === state.activePayPeriod);
-  const periodIncome = sum(periodTransactions.filter((transaction) => transaction.amount > 0));
-  const plannedExpenses = Math.abs(sum(periodTransactions.filter((transaction) => transaction.expenseType === "Planned" && transaction.amount < 0)));
-  const periodSpending = Math.abs(sum(periodTransactions.filter((transaction) => transaction.amount < 0 && transaction.expenseType !== "Planned")));
-  const unpaidCount = periodTransactions.filter((transaction) => !transaction.paid).length;
-  const transactionCount = periodTransactions.length;
+  const monthTransactions = state.transactions.filter((transaction) => monthFromDate(transaction.date) === state.activeMonth);
+  const monthIncome = sum(monthTransactions.filter((transaction) => transaction.amount > 0));
+  const plannedExpenses = Math.abs(sum(monthTransactions.filter((transaction) => transaction.expenseType === "Planned" && transaction.amount < 0)));
+  const monthSpending = Math.abs(sum(monthTransactions.filter((transaction) => transaction.amount < 0 && transaction.expenseType !== "Planned")));
+  const unpaidCount = monthTransactions.filter((transaction) => !transaction.paid).length;
+  const transactionCount = monthTransactions.length;
   const balance = startingBalance + sum(state.transactions);
   const allUnpaidTransactions = state.transactions.filter((transaction) => !transaction.paid);
-  const visibleHeading = transactionViewFilter === "payPeriod" ? formatPayPeriod(state.activePayPeriod) : "Unpaid transactions";
-  const visibleDescription = transactionViewFilter === "payPeriod"
+  const visibleHeading = transactionViewFilter === "month" ? formatMonth(state.activeMonth) : "Unpaid transactions";
+  const visibleDescription = transactionViewFilter === "month"
     ? `${visibleTransactions.length} transactions shown`
-    : `${visibleTransactions.length} unpaid items across all pay periods`;
+    : `${visibleTransactions.length} unpaid items across all months`;
   const selectedTransactions = state.transactions.filter((transaction) => selectedTransactionIds.includes(transaction.id));
   const selectedTotal = sum(selectedTransactions);
 
@@ -192,7 +192,7 @@ export default function TransactionsPage() {
 
     const transaction: Transaction = {
       id: crypto.randomUUID(),
-      payPeriod: String(form.get("payPeriod")),
+      payPeriod: fallbackPayPeriodForDate(transactionDate, state.activeMonth),
       date: transactionDate,
       merchant: String(form.get("merchant")).trim(),
       amount,
@@ -452,17 +452,9 @@ export default function TransactionsPage() {
             Show
             <select value={transactionViewFilter} onChange={(event) => setTransactionViewFilter(event.target.value as TransactionViewFilter)}>
               <option value="unpaid">Unpaid items</option>
-              <option value="payPeriod">Selected pay period</option>
+              <option value="month">Selected month</option>
             </select>
           </label>
-          {transactionViewFilter === "payPeriod" && (
-            <label>
-              Selected period
-              <select value={state.activePayPeriod} onChange={(event) => updateState((current) => ({ ...current, activePayPeriod: event.target.value }))}>
-                {payPeriods.map((period) => <option key={period} value={period}>{formatPayPeriod(period)}</option>)}
-              </select>
-            </label>
-          )}
           <label>
             Month
             <input type="month" value={state.activeMonth} onChange={(event) => changeMonth(event.target.value)} />
@@ -637,7 +629,7 @@ export default function TransactionsPage() {
                   );
                 }) : (
                   <tr>
-                    <td colSpan={10}><div className="empty-state">{transactionViewFilter === "payPeriod" ? "No transactions for this pay period yet." : "No unpaid transactions yet."}</div></td>
+                    <td colSpan={10}><div className="empty-state">{transactionViewFilter === "month" ? "No transactions for this month yet." : "No unpaid transactions yet."}</div></td>
                   </tr>
                 )}
               </tbody>
@@ -646,10 +638,10 @@ export default function TransactionsPage() {
         </section>
       </section>
 
-      <section className="metric-grid bottom-stats" aria-label="Pay period summary">
-        <Metric label="Income" value={money(periodIncome)} tone="good" />
+      <section className="metric-grid bottom-stats" aria-label="Monthly summary">
+        <Metric label="Income" value={money(monthIncome)} tone="good" />
         <Metric label="Planned expenses" value={money(plannedExpenses)} tone="warn" />
-        <Metric label="Spending" value={money(periodSpending)} tone="danger" />
+        <Metric label="Spending" value={money(monthSpending)} tone="danger" />
         <Metric label="Unpaid items" value={String(unpaidCount)} tone={unpaidCount ? "warn" : "good"} />
         <Metric label="Total transactions" value={String(transactionCount)} tone="good" />
       </section>
@@ -694,12 +686,6 @@ export default function TransactionsPage() {
             </div>
             <form className="entry-panel modal-form add-transaction-form" onSubmit={addTransaction}>
               <div className="field-grid add-transaction-grid">
-                <label>
-                  Pay period
-                  <select name="payPeriod" defaultValue={state.activePayPeriod} required>
-                    {payPeriods.map((period) => <option key={period} value={period}>{formatPayPeriod(period)}</option>)}
-                  </select>
-                </label>
                 <label>
                   Date
                   <input name="date" type="date" defaultValue={todayIso()} required />
@@ -934,6 +920,25 @@ function XIcon() {
       <path d="m6 6 12 12" />
     </svg>
   );
+}
+
+function monthFromDate(date: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.slice(0, 7) : "";
+}
+
+function formatMonth(month: string) {
+  const [year, monthNumber] = month.split("-");
+
+  return new Date(Number(year), Number(monthNumber) - 1, 1).toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric"
+  });
+}
+
+function fallbackPayPeriodForDate(date: string, fallbackMonth: string) {
+  const month = monthFromDate(date) || fallbackMonth;
+
+  return `${month}-PP1`;
 }
 
 function csvCell(value: unknown) {
