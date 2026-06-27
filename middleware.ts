@@ -37,6 +37,7 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/",
+    "/analytics",
     "/sofi",
     "/api/state/:path*",
     "/api/sofi-state/:path*",

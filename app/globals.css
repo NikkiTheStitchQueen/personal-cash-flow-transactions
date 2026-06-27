@@ -44,6 +44,11 @@ button {
   cursor: pointer;
 }
 
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
 h1,
 h2,
 p {
@@ -385,6 +390,13 @@ td.actions-column {
 
 .status.unpaid {
   color: var(--warn);
+}
+
+.nav-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
 }
 
 .delete-button {
@@ -729,6 +741,10 @@ td.actions-column {
   color: var(--danger);
 }
 
+.muted-text {
+  color: var(--muted);
+}
+
 .empty-state {
   color: var(--muted);
   padding: 12px;
@@ -809,6 +825,103 @@ td.actions-column {
   min-height: 44px;
 }
 
+.analytics-screen {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+
+.analytics-toolbar {
+  grid-template-columns: minmax(220px, 360px) auto;
+  align-items: end;
+  margin-bottom: 0;
+}
+
+.analytics-source {
+  display: grid;
+  gap: 4px;
+  justify-self: end;
+  min-width: 160px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+}
+
+.analytics-source span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.analytics-source strong {
+  font-size: 14px;
+}
+
+.analytics-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 0;
+}
+
+.analytics-panel {
+  display: grid;
+  gap: 4px;
+}
+
+.category-spend-list {
+  display: grid;
+  gap: 10px;
+}
+
+.category-spend-row {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfa;
+}
+
+.category-spend-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.category-spend-heading > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.category-spend-heading strong {
+  overflow-wrap: anywhere;
+}
+
+.category-spend-heading span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.spend-bar {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--soft);
+}
+
+.spend-bar span {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
 @media (max-width: 1080px) {
   .app-header {
     grid-template-columns: 1fr;
@@ -825,6 +938,10 @@ td.actions-column {
 
   .metric-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .analytics-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .toolbar {
@@ -859,6 +976,15 @@ td.actions-column {
     grid-template-columns: 1fr;
   }
 
+  .analytics-toolbar,
+  .analytics-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-source {
+    justify-self: stretch;
+  }
+
   .app-header {
     gap: 12px;
     margin-bottom: 14px;
@@ -876,6 +1002,10 @@ td.actions-column {
     grid-column: 1 / -1;
     min-height: 48px;
     font-size: 16px;
+  }
+
+  .nav-button {
+    min-height: 42px;
   }
 
   .compact-field {
