@@ -21,6 +21,8 @@ type CategorySpend = {
   transactions: number;
 };
 
+const excludedAnalyticsAccounts = new Set(["sofi"]);
+
 export default function AnalyticsPage() {
   const [state, setState] = useState<AppState>(initialState);
   const [selectedPayPeriod, setSelectedPayPeriod] = useState(initialState.activePayPeriod);
@@ -66,17 +68,20 @@ export default function AnalyticsPage() {
   }, []);
 
   const payPeriods = useMemo(() => {
+    const primaryTransactions = state.transactions.filter(isPrimaryAccountTransaction);
     const periods = new Set([
       ...buildPayPeriods(state.activeMonth),
       state.activePayPeriod,
-      ...state.transactions.map((transaction) => transaction.payPeriod)
+      ...primaryTransactions.map((transaction) => transaction.payPeriod)
     ]);
 
     return [...periods].filter(Boolean).sort((a, b) => b.localeCompare(a));
   }, [state.activeMonth, state.activePayPeriod, state.transactions]);
 
   const periodTransactions = useMemo(() => {
-    return state.transactions.filter((transaction) => transaction.payPeriod === selectedPayPeriod);
+    return state.transactions.filter((transaction) =>
+      transaction.payPeriod === selectedPayPeriod && isPrimaryAccountTransaction(transaction)
+    );
   }, [selectedPayPeriod, state.transactions]);
 
   const spendingTransactions = useMemo(() => {
@@ -163,6 +168,10 @@ export default function AnalyticsPage() {
       </section>
     </main>
   );
+}
+
+function isPrimaryAccountTransaction(transaction: { account: string }) {
+  return !excludedAnalyticsAccounts.has(transaction.account.trim().toLowerCase());
 }
 
 function AnalyticsMetric({ label, value, tone }: { label: string; value: string; tone: "good" | "warn" | "danger" }) {
