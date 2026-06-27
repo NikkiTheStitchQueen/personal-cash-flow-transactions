@@ -11,8 +11,6 @@ import {
   sum
 } from "../cash-flow";
 
-type PersistenceTarget = "local" | "database";
-
 type CategorySpend = {
   category: string;
   total: number;
@@ -24,15 +22,12 @@ const excludedAnalyticsAccounts = new Set(["sofi"]);
 export default function AnalyticsPage() {
   const [state, setState] = useState<AppState>(initialState);
   const [selectedMonth, setSelectedMonth] = useState(initialState.activeMonth);
-  const [hydrated, setHydrated] = useState(false);
-  const [persistenceTarget, setPersistenceTarget] = useState<PersistenceTarget>("local");
 
   useEffect(() => {
     let isCurrent = true;
 
     async function loadState() {
       let nextState = loadLocalState();
-      let nextPersistenceTarget: PersistenceTarget = "local";
 
       try {
         const response = await fetch("/api/state", { cache: "no-store" });
@@ -41,12 +36,10 @@ export default function AnalyticsPage() {
           const payload = await response.json() as { configured: boolean; state: AppState | null };
 
           if (payload.configured) {
-            nextPersistenceTarget = "database";
             nextState = payload.state ? normalizeState(payload.state) : nextState;
           }
         }
       } catch {
-        nextPersistenceTarget = "local";
       }
 
       if (!isCurrent) return;
@@ -54,8 +47,6 @@ export default function AnalyticsPage() {
       const hydratedState = nextState ?? initialState;
       setState(hydratedState);
       setSelectedMonth(hydratedState.activeMonth);
-      setPersistenceTarget(nextPersistenceTarget);
-      setHydrated(true);
     }
 
     loadState();
@@ -141,10 +132,6 @@ export default function AnalyticsPage() {
             {months.map((month) => <option key={month} value={month}>{formatMonth(month)}</option>)}
           </select>
         </label>
-        <div className="analytics-source">
-          <span>{hydrated ? "Loaded" : "Loading"}</span>
-          <strong>{persistenceTarget === "database" ? "Database" : "Local browser"}</strong>
-        </div>
       </section>
 
       <section className="table-panel analytics-panel">
