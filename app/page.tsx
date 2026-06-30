@@ -399,6 +399,10 @@ export default function TransactionsPage() {
           <h1>Spending Tracker</h1>
         </div>
         <div className="header-actions">
+          <nav className="account-switch" aria-label="Account tracker">
+            <a className="active" href="/" aria-current="page">Chase</a>
+            <a href="/sofi">Sofi</a>
+          </nav>
           <a className="ghost-button nav-button" href="/analytics">Analytics</a>
           <button type="button" className="primary-button quick-add-button" onClick={() => setIsAddModalOpen(true)}>Add transaction</button>
           <article className="account-card balance-card mobile-balance-card">

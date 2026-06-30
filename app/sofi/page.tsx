@@ -273,6 +273,10 @@ export default function SofiTransactionsPage() {
           <h1>SoFi Tracker</h1>
         </div>
         <div className="header-actions">
+          <nav className="account-switch" aria-label="Account tracker">
+            <a href="/">Chase</a>
+            <a className="active" href="/sofi" aria-current="page">Sofi</a>
+          </nav>
           <button type="button" className="primary-button quick-add-button" onClick={() => setIsAddModalOpen(true)}>Add transaction</button>
           <article className="account-card balance-card mobile-balance-card">
             <strong>Balance</strong>

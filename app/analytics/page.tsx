@@ -80,18 +80,27 @@ export default function AnalyticsPage() {
     return monthTransactions.filter((transaction) => transaction.amount < 0);
   }, [monthTransactions]);
 
-  const categorySpend = useMemo(() => {
+  const incomeTransactions = useMemo(() => {
+    return monthTransactions.filter((transaction) => transaction.category === "Income" && transaction.amount > 0);
+  }, [monthTransactions]);
+
+  const categoryTotals = useMemo(() => {
     return categories
       .map((category, index) => {
-        const transactions = spendingTransactions.filter((transaction) => transaction.category === category);
+        const transactions = category === "Income"
+          ? incomeTransactions
+          : spendingTransactions.filter((transaction) => transaction.category === category);
         return {
           category,
-          total: Math.abs(sum(transactions)),
+          total: category === "Income" ? sum(transactions) : Math.abs(sum(transactions)),
           transactions: transactions.length,
           sortOrder: index
         };
       })
       .sort((a, b) => {
+        if (a.category === "Income") return -1;
+        if (b.category === "Income") return 1;
+
         const spendingOrder = b.total - a.total;
 
         if (spendingOrder !== 0) {
@@ -100,17 +109,21 @@ export default function AnalyticsPage() {
 
         return a.sortOrder - b.sortOrder;
       });
-  }, [spendingTransactions]);
+  }, [incomeTransactions, spendingTransactions]);
 
+  const totalIncome = sum(incomeTransactions);
   const totalSpending = Math.abs(sum(spendingTransactions));
-  const largestCategory = categorySpend.reduce<CategorySpend | null>((largest, current) => {
-    if (!largest || current.total > largest.total) {
-      return current;
-    }
+  const largestCategory = categoryTotals
+    .filter((item) => item.category !== "Income")
+    .reduce<CategorySpend | null>((largest, current) => {
+      if (!largest || current.total > largest.total) {
+        return current;
+      }
 
-    return largest;
-  }, null);
-  const categoriesWithSpending = categorySpend.filter((item) => item.total > 0).length;
+      return largest;
+    }, null);
+  const spendCategoryCount = categories.length - 1;
+  const categoriesWithSpending = categoryTotals.filter((item) => item.category !== "Income" && item.total > 0).length;
   const transactionCount = monthTransactions.length;
 
   return (
@@ -138,19 +151,20 @@ export default function AnalyticsPage() {
         <div className="panel-heading">
           <div>
             <h2>{formatMonth(selectedMonth)}</h2>
-            <p>Spending totals by category</p>
+            <p>Income and spending totals by category</p>
           </div>
         </div>
         <div className="category-spend-list">
-          {categorySpend.map((item) => (
+          {categoryTotals.map((item) => (
             <CategorySpendRow key={item.category} item={item} totalSpending={totalSpending} />
           ))}
         </div>
       </section>
 
       <section className="metric-grid analytics-metrics" aria-label="Spending summary">
+        <AnalyticsMetric label="Income" value={money(totalIncome)} tone="good" />
         <AnalyticsMetric label="Total spending" value={money(totalSpending)} tone="danger" />
-        <AnalyticsMetric label="Categories used" value={`${categoriesWithSpending} of ${categories.length}`} tone="good" />
+        <AnalyticsMetric label="Categories used" value={`${categoriesWithSpending} of ${spendCategoryCount}`} tone="good" />
         <AnalyticsMetric label="Transactions" value={String(transactionCount)} tone="good" />
         <AnalyticsMetric label="Largest category" value={largestCategory ? largestCategory.category : "None"} tone={largestCategory?.total ? "warn" : "good"} />
       </section>
@@ -185,18 +199,19 @@ function AnalyticsMetric({ label, value, tone }: { label: string; value: string;
 }
 
 function CategorySpendRow({ item, totalSpending }: { item: CategorySpend; totalSpending: number }) {
-  const percent = totalSpending > 0 ? (item.total / totalSpending) * 100 : 0;
+  const isIncome = item.category === "Income";
+  const percent = isIncome ? item.total > 0 ? 100 : 0 : totalSpending > 0 ? (item.total / totalSpending) * 100 : 0;
 
   return (
-    <article className="category-spend-row">
+    <article className={isIncome ? "category-spend-row income-row" : "category-spend-row"}>
       <div className="category-spend-heading">
         <div>
           <strong>{item.category}</strong>
           <span>{item.transactions} {item.transactions === 1 ? "transaction" : "transactions"}</span>
         </div>
-        <strong className={item.total > 0 ? "danger-text" : "muted-text"}>{money(item.total)}</strong>
+        <strong className={item.total > 0 ? isIncome ? "good-text" : "danger-text" : "muted-text"}>{money(item.total)}</strong>
       </div>
-      <div className="spend-bar" aria-label={`${item.category} ${percent.toFixed(0)} percent of spending`}>
+      <div className={isIncome ? "spend-bar income-bar" : "spend-bar"} aria-label={`${item.category} ${percent.toFixed(0)} percent ${isIncome ? "of income" : "of spending"}`}>
         <span style={{ width: `${percent}%` }} />
       </div>
     </article>

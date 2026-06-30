@@ -399,6 +399,35 @@ td.actions-column {
   font-weight: 800;
 }
 
+.account-switch {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(64px, 1fr));
+  min-height: 38px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.account-switch a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.account-switch a + a {
+  border-left: 1px solid var(--line);
+}
+
+.account-switch .active {
+  background: var(--accent);
+  color: white;
+}
+
 .delete-button {
   min-width: 34px;
   padding: 6px 10px;
@@ -838,7 +867,7 @@ td.actions-column {
 }
 
 .analytics-metrics {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   margin-top: 0;
 }
 
@@ -897,6 +926,14 @@ td.actions-column {
   min-width: 0;
   border-radius: inherit;
   background: var(--accent);
+}
+
+.income-row {
+  border-color: color-mix(in srgb, var(--good) 28%, var(--line));
+}
+
+.income-bar span {
+  background: var(--good);
 }
 
 @media (max-width: 1080px) {
@@ -979,6 +1016,10 @@ td.actions-column {
 
   .nav-button {
     min-height: 42px;
+  }
+
+  .account-switch {
+    width: 100%;
   }
 
   .compact-field {
