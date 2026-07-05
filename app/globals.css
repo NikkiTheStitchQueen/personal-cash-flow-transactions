@@ -72,7 +72,7 @@ p {
 }
 
 .app-header {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 1fr;
   align-items: center;
   margin-bottom: 12px;
 }
@@ -96,24 +96,135 @@ h2 {
 }
 
 .header-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: auto minmax(220px, 308px) auto auto;
   gap: 8px;
   align-items: flex-end;
-  justify-content: flex-end;
+  justify-content: flex-start;
+  width: 100%;
+  min-width: 0;
 }
 
 .header-actions form {
   display: contents;
 }
 
+.app-logo {
+  order: 1;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+}
+
 .quick-add-button {
+  order: 5;
+  grid-column: 2 / 3;
+  width: 100%;
+  min-height: 42px;
+}
+
+.desktop-hidden-menu-item {
+  display: none;
+}
+
+.account-menu {
+  order: 2;
+  position: relative;
+  min-width: 0;
+}
+
+.account-menu-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-width: 154px;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 10px 7px 12px;
+  background: white;
+  color: var(--ink);
+  font-weight: 850;
+  text-align: left;
+  box-shadow: 0 8px 18px rgba(31, 37, 40, 0.04);
+}
+
+.header-actions > .icon-button {
+  order: 3;
+  height: 42px;
+  min-height: 42px;
+}
+
+.account-menu-button span {
+  display: grid;
+  gap: 1px;
+  line-height: 1.05;
+}
+
+.account-menu-button small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.account-menu-button svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.account-menu-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 6;
+  display: grid;
+  gap: 4px;
+  min-width: 190px;
+  padding: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.account-menu-panel a,
+.account-menu-panel button {
+  display: flex;
+  align-items: center;
+  width: 100%;
   min-height: 40px;
+  border: 0;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 800;
+  text-align: left;
+}
+
+.account-menu-panel .active {
+  background: var(--soft);
+  color: var(--accent-strong);
 }
 
 .more-menu {
+  order: 4;
   position: relative;
-  display: none;
+  display: block;
+}
+
+.more-menu > .icon-button {
+  height: 42px;
+  min-height: 42px;
 }
 
 .more-menu-panel {
@@ -132,6 +243,7 @@ h2 {
 }
 
 .more-menu-panel .ghost-button {
+  min-height: 40px;
   width: 100%;
   justify-content: flex-start;
   text-align: left;
@@ -938,12 +1050,11 @@ td.actions-column {
 
 @media (max-width: 1080px) {
   .app-header {
-    grid-template-columns: 1fr;
     align-items: start;
   }
 
   .header-actions {
-    justify-content: flex-start;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
   }
 
   .account-strip {
@@ -1001,11 +1112,41 @@ td.actions-column {
   }
 
   .header-actions {
-    display: grid;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+  }
+
+  .app-logo {
+    order: 1;
+    width: 46px;
+    height: 46px;
+  }
+
+  .account-menu {
+    order: 2;
+    min-width: 0;
+  }
+
+  .account-menu-button {
     width: 100%;
     min-width: 0;
-    align-items: end;
+    height: 46px;
+    min-height: 46px;
+  }
+
+  .account-menu-button small {
+    display: none;
+  }
+
+  .account-menu-button span {
+    display: block;
+  }
+
+  .desktop-hidden-menu-item {
+    display: flex;
+  }
+
+  .account-menu-panel {
+    min-width: min(240px, calc(100vw - 24px));
   }
 
   .quick-add-button {
@@ -1015,7 +1156,7 @@ td.actions-column {
   }
 
   .nav-button {
-    min-height: 42px;
+    display: none;
   }
 
   .account-switch {
@@ -1031,6 +1172,7 @@ td.actions-column {
   }
 
   .mobile-balance-card {
+    order: 6;
     display: grid;
     grid-column: 1 / -1;
   }
@@ -1041,6 +1183,12 @@ td.actions-column {
 
   .more-menu {
     display: block;
+  }
+
+  .header-actions > .icon-button,
+  .more-menu > .icon-button {
+    height: 46px;
+    min-height: 46px;
   }
 
   .account-strip {

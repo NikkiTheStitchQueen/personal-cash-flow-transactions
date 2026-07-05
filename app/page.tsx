@@ -43,6 +43,7 @@ export default function TransactionsPage() {
     PP2: defaultDateForPayPeriod(`${initialState.activeMonth}-PP2`)
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showMobileSummary, setShowMobileSummary] = useState(false);
   const [openTransactionDetailsId, setOpenTransactionDetailsId] = useState<string | null>(null);
@@ -394,16 +395,35 @@ export default function TransactionsPage() {
   return (
     <main className="screen">
       <header className="app-header">
-        <div>
-          <p className="eyebrow">Personal cash flow tracker</p>
-          <h1>Spending Tracker</h1>
-        </div>
         <div className="header-actions">
-          <nav className="account-switch" aria-label="Account tracker">
-            <a className="active" href="/" aria-current="page">Chase</a>
-            <a href="/sofi">Sofi</a>
-          </nav>
-          <a className="ghost-button nav-button" href="/analytics">Analytics</a>
+          <img className="app-logo" src="/android-chrome-192x192.png" alt="Cash Flow" />
+          <div className="account-menu">
+            <button
+              type="button"
+              className="account-menu-button"
+              aria-label="Switch account tracker"
+              aria-expanded={showAccountMenu}
+              onClick={() => {
+                setShowAccountMenu((current) => !current);
+                setShowMoreMenu(false);
+              }}
+            >
+              <span>
+                <small>Account</small>
+                Chase
+              </span>
+              <ChevronDownIcon />
+            </button>
+            {showAccountMenu && (
+              <div className="account-menu-panel">
+                <a className="active" href="/" aria-current="page">Chase</a>
+                <a href="/sofi">SoFi</a>
+                <form action="/api/logout" method="post">
+                  <button type="submit">Log out</button>
+                </form>
+              </div>
+            )}
+          </div>
           <button type="button" className="primary-button quick-add-button" onClick={() => setIsAddModalOpen(true)}>Add transaction</button>
           <article className="account-card balance-card mobile-balance-card">
             <strong>Balance</strong>
@@ -414,16 +434,26 @@ export default function TransactionsPage() {
             <SearchIcon />
             <FilterIcon />
           </button>
-          <button type="button" className="ghost-button desktop-recurring-button" onClick={openRecurringModal}>Recurring</button>
           <div className="more-menu">
-            <button type="button" className="icon-button" aria-label="More options" title="More options" aria-expanded={showMoreMenu} onClick={() => setShowMoreMenu((current) => !current)}>
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="More options"
+              title="More options"
+              aria-expanded={showMoreMenu}
+              onClick={() => {
+                setShowMoreMenu((current) => !current);
+                setShowAccountMenu(false);
+              }}
+            >
               <DotsIcon />
             </button>
             {showMoreMenu && (
               <div className="more-menu-panel">
+                <a className="ghost-button" href="/analytics">Analytics</a>
                 <button
                   type="button"
-                  className="ghost-button"
+                  className="ghost-button desktop-hidden-menu-item"
                   onClick={() => {
                     setShowMobileSummary((current) => !current);
                     setShowMoreMenu(false);
@@ -441,9 +471,6 @@ export default function TransactionsPage() {
                 >
                   Recurring
                 </button>
-                <form action="/api/logout" method="post">
-                  <button type="submit" className="ghost-button">Log out</button>
-                </form>
               </div>
             )}
           </div>
@@ -886,6 +913,14 @@ function FilterIcon() {
       <path d="M4 6h16" />
       <path d="M7 12h10" />
       <path d="M10 18h4" />
+    </svg>
+  );
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="m6 9 6 6 6-6" />
     </svg>
   );
 }

@@ -37,6 +37,8 @@ export default function SofiTransactionsPage() {
   const [editingTransaction, setEditingTransaction] = useState<SofiTransaction | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [viewFilter, setViewFilter] = useState<SofiViewFilter>("unpaid");
+  const [showFilters, setShowFilters] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showMobileSummary, setShowMobileSummary] = useState(false);
   const [openTransactionDetailsId, setOpenTransactionDetailsId] = useState<string | null>(null);
@@ -268,30 +270,64 @@ export default function SofiTransactionsPage() {
   return (
     <main className="screen sofi-screen">
       <header className="app-header">
-        <div>
-          <p className="eyebrow">SoFi cash flow tracker</p>
-          <h1>SoFi Tracker</h1>
-        </div>
         <div className="header-actions">
-          <nav className="account-switch" aria-label="Account tracker">
-            <a href="/">Chase</a>
-            <a className="active" href="/sofi" aria-current="page">Sofi</a>
-          </nav>
+          <img className="app-logo" src="/android-chrome-192x192.png" alt="Cash Flow" />
+          <div className="account-menu">
+            <button
+              type="button"
+              className="account-menu-button"
+              aria-label="Switch account tracker"
+              aria-expanded={showAccountMenu}
+              onClick={() => {
+                setShowAccountMenu((current) => !current);
+                setShowMoreMenu(false);
+              }}
+            >
+              <span>
+                <small>Account</small>
+                SoFi
+              </span>
+              <ChevronDownIcon />
+            </button>
+            {showAccountMenu && (
+              <div className="account-menu-panel">
+                <a href="/">Chase</a>
+                <a className="active" href="/sofi" aria-current="page">SoFi</a>
+                <form action="/api/logout" method="post">
+                  <button type="submit">Log out</button>
+                </form>
+              </div>
+            )}
+          </div>
           <button type="button" className="primary-button quick-add-button" onClick={() => setIsAddModalOpen(true)}>Add transaction</button>
           <article className="account-card balance-card mobile-balance-card">
             <strong>Balance</strong>
             <span className={balance >= 0 ? "good-text" : "danger-text"}>{money(balance)}</span>
             <small>Available to spend</small>
           </article>
+          <button type="button" className="icon-button" aria-label="Search and filter" title="Search and filter" onClick={() => setShowFilters((current) => !current)}>
+            <SearchIcon />
+            <FilterIcon />
+          </button>
           <div className="more-menu">
-            <button type="button" className="icon-button" aria-label="More options" title="More options" aria-expanded={showMoreMenu} onClick={() => setShowMoreMenu((current) => !current)}>
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="More options"
+              title="More options"
+              aria-expanded={showMoreMenu}
+              onClick={() => {
+                setShowMoreMenu((current) => !current);
+                setShowAccountMenu(false);
+              }}
+            >
               <DotsIcon />
             </button>
             {showMoreMenu && (
               <div className="more-menu-panel">
                 <button
                   type="button"
-                  className="ghost-button"
+                  className="ghost-button desktop-hidden-menu-item"
                   onClick={() => {
                     setShowMobileSummary((current) => !current);
                     setShowMoreMenu(false);
@@ -305,22 +341,24 @@ export default function SofiTransactionsPage() {
         </div>
       </header>
 
-      <section className="toolbar" aria-label="Transaction controls">
-        <label>
-          Show
-          <select value={viewFilter} onChange={(event) => setViewFilter(event.target.value as SofiViewFilter)}>
-            <option value="unpaid">Unpaid transactions</option>
-            <option value="all">All transactions</option>
-          </select>
-        </label>
-        <label className="search-field">
-          Search
-          <input value={search} onChange={(event) => setSearch(event.target.value)} type="search" placeholder="Merchant, category, account, notes" />
-        </label>
-        <div className="filter-actions" aria-label="Data tools">
-          <button type="button" className="ghost-button" onClick={exportCsv}>Export CSV</button>
-        </div>
-      </section>
+      {showFilters && (
+        <section className="toolbar" aria-label="Transaction controls">
+          <label>
+            Show
+            <select value={viewFilter} onChange={(event) => setViewFilter(event.target.value as SofiViewFilter)}>
+              <option value="unpaid">Unpaid transactions</option>
+              <option value="all">All transactions</option>
+            </select>
+          </label>
+          <label className="search-field">
+            Search
+            <input value={search} onChange={(event) => setSearch(event.target.value)} type="search" placeholder="Merchant, category, account, notes" />
+          </label>
+          <div className="filter-actions" aria-label="Data tools">
+            <button type="button" className="ghost-button" onClick={exportCsv}>Export CSV</button>
+          </div>
+        </section>
+      )}
 
       <section className={showMobileSummary ? "account-strip sofi-account-strip mobile-summary-open" : "account-strip sofi-account-strip"} aria-label="Account summary">
         <article className="account-card balance-card desktop-balance-card">
@@ -581,12 +619,39 @@ function PencilIcon() {
   );
 }
 
+function SearchIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <circle cx="11" cy="11" r="7" />
+      <path d="m16.5 16.5 4 4" />
+    </svg>
+  );
+}
+
+function FilterIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M4 6h16" />
+      <path d="M7 12h10" />
+      <path d="M10 18h4" />
+    </svg>
+  );
+}
+
 function DotsIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
       <path d="M5 12h.01" />
       <path d="M12 12h.01" />
       <path d="M19 12h.01" />
+    </svg>
+  );
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="m6 9 6 6 6-6" />
     </svg>
   );
 }
