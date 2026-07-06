@@ -302,7 +302,7 @@ export default function SofiTransactionsPage() {
           <button type="button" className="primary-button quick-add-button" onClick={() => setIsAddModalOpen(true)}>Add transaction</button>
           <article className="account-card balance-card mobile-balance-card">
             <strong>Balance</strong>
-            <span className={balance >= 0 ? "good-text" : "danger-text"}>{money(balance)}</span>
+            <BalanceAmount hydrated={hydrated} balance={balance} />
             <small>Available to spend</small>
           </article>
           <button type="button" className="icon-button" aria-label="Search and filter" title="Search and filter" onClick={() => setShowFilters((current) => !current)}>
@@ -363,7 +363,7 @@ export default function SofiTransactionsPage() {
       <section className={showMobileSummary ? "account-strip sofi-account-strip mobile-summary-open" : "account-strip sofi-account-strip"} aria-label="Account summary">
         <article className="account-card balance-card desktop-balance-card">
           <strong>Balance</strong>
-          <span className={balance >= 0 ? "good-text" : "danger-text"}>{money(balance)}</span>
+          <BalanceAmount hydrated={hydrated} balance={balance} />
           <small>Available to spend</small>
         </article>
         {accountTotals.map((item) => (
@@ -505,7 +505,7 @@ export default function SofiTransactionsPage() {
       </section>
 
       <section className="metric-grid sofi-metric-grid bottom-stats" aria-label="SoFi summary">
-        <Metric label="Balance" value={money(balance)} tone={balance >= 0 ? "good" : "danger"} />
+        <Metric label="Balance" value={hydrated ? money(balance) : ""} tone={balance >= 0 ? "good" : "danger"} loading={!hydrated} />
         <Metric label="Unpaid total" value={money(sum(unpaidTransactions))} tone={sum(unpaidTransactions) >= 0 ? "good" : "danger"} />
         <Metric label="Unpaid items" value={String(unpaidCount)} tone={unpaidCount ? "warn" : "good"} />
       </section>
@@ -601,13 +601,25 @@ export default function SofiTransactionsPage() {
   );
 }
 
-function Metric({ label, value, tone }: { label: string; value: string; tone: "good" | "warn" | "danger" }) {
+function Metric({ label, value, tone, loading = false }: { label: string; value: string; tone: "good" | "warn" | "danger"; loading?: boolean }) {
   return (
     <article className="metric">
       <span>{label}</span>
-      <strong className={`${tone}-text`}>{value}</strong>
+      {loading ? (
+        <strong className="skeleton-text skeleton-metric" aria-label={`Loading ${label.toLowerCase()}`} />
+      ) : (
+        <strong className={`${tone}-text`}>{value}</strong>
+      )}
     </article>
   );
+}
+
+function BalanceAmount({ hydrated, balance }: { hydrated: boolean; balance: number }) {
+  if (!hydrated) {
+    return <span className="skeleton-text skeleton-balance" aria-label="Loading balance" />;
+  }
+
+  return <span className={balance >= 0 ? "good-text" : "danger-text"}>{money(balance)}</span>;
 }
 
 function PencilIcon() {

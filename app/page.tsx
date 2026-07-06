@@ -427,7 +427,7 @@ export default function TransactionsPage() {
           <button type="button" className="primary-button quick-add-button" onClick={() => setIsAddModalOpen(true)}>Add transaction</button>
           <article className="account-card balance-card mobile-balance-card">
             <strong>Balance</strong>
-            <span className={balance >= 0 ? "good-text" : "danger-text"}>{money(balance)}</span>
+            <BalanceAmount hydrated={hydrated} balance={balance} />
             <small>Available to spend</small>
           </article>
           <button type="button" className="icon-button" aria-label="Search and filter" title="Search and filter" onClick={() => setShowFilters((current) => !current)}>
@@ -503,7 +503,7 @@ export default function TransactionsPage() {
       <section className={showMobileSummary ? "account-strip mobile-summary-open" : "account-strip"} aria-label="Account summary">
         <article className="account-card balance-card desktop-balance-card">
           <strong>Balance</strong>
-          <span className={balance >= 0 ? "good-text" : "danger-text"}>{money(balance)}</span>
+          <BalanceAmount hydrated={hydrated} balance={balance} />
           <small>Available to spend</small>
         </article>
         {accountTotals.map((item) => (
@@ -915,6 +915,14 @@ function FilterIcon() {
       <path d="M10 18h4" />
     </svg>
   );
+}
+
+function BalanceAmount({ hydrated, balance }: { hydrated: boolean; balance: number }) {
+  if (!hydrated) {
+    return <span className="skeleton-text skeleton-balance" aria-label="Loading balance" />;
+  }
+
+  return <span className={balance >= 0 ? "good-text" : "danger-text"}>{money(balance)}</span>;
 }
 
 function ChevronDownIcon() {

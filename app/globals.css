@@ -886,6 +886,45 @@ td.actions-column {
   color: var(--muted);
 }
 
+.skeleton-text {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e4e9e7;
+}
+
+.skeleton-text::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent);
+  animation: shimmer 1.35s infinite;
+}
+
+.skeleton-balance {
+  width: min(156px, 82%);
+  height: 32px;
+}
+
+.skeleton-metric {
+  width: min(150px, 80%);
+  height: 30px;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-text::after {
+    animation: none;
+  }
+}
+
 .empty-state {
   color: var(--muted);
   padding: 12px;
