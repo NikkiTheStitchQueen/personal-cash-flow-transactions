@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { threadStashStartingBalance, threadStashTransactions } from "../novo-thread-stash-2026";
 
 type NovoTransaction = {
   id: string;
@@ -21,7 +22,8 @@ type PersistenceTarget = "local" | "database";
 type NovoViewFilter = "unpaid" | "all";
 
 const STORAGE_KEY = "personal-cash-flow-novo-transactions-v1";
-const startingBalance = 0;
+const THREAD_STASH_BACKFILL_KEY = "personal-cash-flow-novo-thread-stash-2026-backfill-v1";
+const startingBalance = threadStashStartingBalance;
 const defaultAccount = "Novo";
 const accounts = ["Novo"];
 const categories = ["Income/Thread Stash", "Income/Crochet Ducks", "Spending/Thread Stash", "Spending/Crochet Ducks"];
@@ -68,6 +70,11 @@ export default function NovoTransactionsPage() {
         }
       } catch {
         nextPersistenceTarget = "local";
+      }
+
+      if (!window.localStorage.getItem(THREAD_STASH_BACKFILL_KEY)) {
+        nextState = mergeThreadStashBackfill(nextState ?? initialState);
+        window.localStorage.setItem(THREAD_STASH_BACKFILL_KEY, "true");
       }
 
       if (!isCurrent) return;
@@ -717,6 +724,20 @@ function loadLocalState() {
   } catch {
     return null;
   }
+}
+
+function mergeThreadStashBackfill(state: NovoState): NovoState {
+  const existingIds = new Set(state.transactions.map((transaction) => transaction.id));
+  const missingTransactions = threadStashTransactions.filter((transaction) => !existingIds.has(transaction.id));
+
+  if (!missingTransactions.length) {
+    return state;
+  }
+
+  return {
+    ...state,
+    transactions: [...missingTransactions, ...state.transactions]
+  };
 }
 
 function sum(transactions: NovoTransaction[]) {
