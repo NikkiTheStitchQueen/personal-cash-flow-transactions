@@ -938,7 +938,8 @@ td.actions-column {
   margin-bottom: 16px;
 }
 
-.sofi-account-strip {
+.sofi-account-strip,
+.novo-account-strip {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 
@@ -966,7 +967,8 @@ td.actions-column {
   display: none;
 }
 
-.sofi-metric-grid {
+.sofi-metric-grid,
+.novo-metric-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
@@ -1234,7 +1236,8 @@ td.actions-column {
     display: none;
   }
 
-  .sofi-account-strip {
+  .sofi-account-strip,
+  .novo-account-strip {
     grid-template-columns: 1fr;
   }
 

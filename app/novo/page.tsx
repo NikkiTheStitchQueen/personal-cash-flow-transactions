@@ -1,57 +1,50 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import {
-  type AppState,
-  type PayPeriodSlot,
-  type RecurringExpense,
-  type Transaction,
-  STORAGE_KEY,
-  accounts,
-  buildPayPeriods,
-  categories,
-  categorySubcategories,
-  compareRecurringExpenses,
-  compareTransactions,
-  defaultDateForPayPeriod,
-  expenseTypes,
-  formatDate,
-  formatPayPeriod,
-  initialState,
-  loadLocalState,
-  money,
-  normalizeState,
-  startingBalance,
-  sum,
-  todayIso
-} from "./cash-flow";
+
+type NovoTransaction = {
+  id: string;
+  date: string;
+  merchant: string;
+  amount: number;
+  category: string;
+  account: string;
+  paid: boolean;
+  notes: string;
+};
+
+type NovoState = {
+  transactions: NovoTransaction[];
+};
 
 type PersistenceTarget = "local" | "database";
-type TransactionViewFilter = "unpaid" | "month";
+type NovoViewFilter = "unpaid" | "all";
 
-export default function TransactionsPage() {
-  const [state, setState] = useState<AppState>(initialState);
+const STORAGE_KEY = "personal-cash-flow-novo-transactions-v1";
+const startingBalance = 0;
+const defaultAccount = "Novo";
+const accounts = ["Novo"];
+const categories = ["Income/Thread Stash", "Income/Crochet Ducks", "Spending/Thread Stash", "Spending/Crochet Ducks"];
+
+const initialState: NovoState = {
+  transactions: []
+};
+
+export default function NovoTransactionsPage() {
+  const [state, setState] = useState<NovoState>(initialState);
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<NovoTransaction | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
-  const [addCategory, setAddCategory] = useState("");
-  const [recurringCategories, setRecurringCategories] = useState<Record<PayPeriodSlot, string>>({ PP1: "Income", PP2: "Income" });
-  const [recurringTransactionDates, setRecurringTransactionDates] = useState<Record<PayPeriodSlot, string>>({
-    PP1: defaultDateForPayPeriod(`${initialState.activeMonth}-PP1`),
-    PP2: defaultDateForPayPeriod(`${initialState.activeMonth}-PP2`)
-  });
+  const [viewFilter, setViewFilter] = useState<NovoViewFilter>("unpaid");
   const [showFilters, setShowFilters] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showMobileSummary, setShowMobileSummary] = useState(false);
   const [openTransactionDetailsId, setOpenTransactionDetailsId] = useState<string | null>(null);
-  const [transactionViewFilter, setTransactionViewFilter] = useState<TransactionViewFilter>("unpaid");
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
   const [selectedPaymentNote, setSelectedPaymentNote] = useState("");
   const [transactionError, setTransactionError] = useState("");
-  const [editingError, setEditingError] = useState("");
   const [hydrated, setHydrated] = useState(false);
   const [persistenceTarget, setPersistenceTarget] = useState<PersistenceTarget>("local");
 
@@ -63,10 +56,10 @@ export default function TransactionsPage() {
       let nextPersistenceTarget: PersistenceTarget = "local";
 
       try {
-        const response = await fetch("/api/state", { cache: "no-store" });
+        const response = await fetch("/api/novo-state", { cache: "no-store" });
 
         if (response.ok) {
-          const payload = await response.json() as { configured: boolean; state: AppState | null };
+          const payload = await response.json() as { configured: boolean; state: NovoState | null };
 
           if (payload.configured) {
             nextPersistenceTarget = "database";
@@ -102,7 +95,7 @@ export default function TransactionsPage() {
 
     const timeout = window.setTimeout(async () => {
       try {
-        await fetch("/api/state", {
+        await fetch("/api/novo-state", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(state)
@@ -118,68 +111,43 @@ export default function TransactionsPage() {
   useEffect(() => {
     setSelectedTransactionIds([]);
     setSelectedPaymentNote("");
-  }, [search, state.activeMonth, transactionViewFilter]);
+  }, [search, viewFilter]);
 
-  const payPeriods = useMemo(() => buildPayPeriods(state.activeMonth), [state.activeMonth]);
-  const recurringExpenseGroups = {
-    PP1: state.recurringExpenses.filter((expense) => expense.periodSlot === "PP1").sort(compareRecurringExpenses),
-    PP2: state.recurringExpenses.filter((expense) => expense.periodSlot === "PP2").sort(compareRecurringExpenses)
-  };
-  const filteredBaseTransactions = transactionViewFilter === "month"
-    ? state.transactions.filter((transaction) => monthFromDate(transaction.date) === state.activeMonth)
-    : state.transactions.filter((transaction) => !transaction.paid);
+  const filteredBaseTransactions = viewFilter === "unpaid"
+    ? state.transactions.filter((transaction) => !transaction.paid)
+    : state.transactions;
   const visibleTransactions = filteredBaseTransactions
     .filter((transaction) =>
-      [transaction.merchant, transaction.category, transaction.subcategory, transaction.expenseType, transaction.account, transaction.notes]
+      [transaction.merchant, transaction.category, transaction.account, transaction.notes]
         .join(" ")
         .toLowerCase()
         .includes(search.toLowerCase())
     )
     .sort(compareTransactions);
-
-  const monthTransactions = state.transactions.filter((transaction) => monthFromDate(transaction.date) === state.activeMonth);
-  const monthIncome = sum(monthTransactions.filter((transaction) => transaction.amount > 0));
-  const plannedExpenses = Math.abs(sum(monthTransactions.filter((transaction) => transaction.expenseType === "Planned" && transaction.amount < 0)));
-  const monthSpending = Math.abs(sum(monthTransactions.filter((transaction) => transaction.amount < 0 && transaction.expenseType !== "Planned")));
-  const unpaidCount = monthTransactions.filter((transaction) => !transaction.paid).length;
-  const transactionCount = monthTransactions.length;
   const balance = startingBalance + sum(state.transactions);
-  const allUnpaidTransactions = state.transactions.filter((transaction) => !transaction.paid);
-  const visibleHeading = transactionViewFilter === "month" ? formatMonth(state.activeMonth) : "Unpaid transactions";
-  const visibleDescription = transactionViewFilter === "month"
-    ? `${visibleTransactions.length} transactions shown`
-    : `${visibleTransactions.length} unpaid items across all months`;
+  const unpaidTransactions = state.transactions.filter((transaction) => !transaction.paid);
+  const unpaidCount = unpaidTransactions.length;
   const selectedTransactions = state.transactions.filter((transaction) => selectedTransactionIds.includes(transaction.id));
   const selectedTotal = sum(selectedTransactions);
+  const visibleHeading = viewFilter === "unpaid" ? "Unpaid transactions" : "All transactions";
+  const visibleDescription = viewFilter === "unpaid"
+    ? `${visibleTransactions.length} unpaid items shown`
+    : `${visibleTransactions.length} transactions shown`;
+  const categoryTotals = useMemo(() => {
+    return categories
+      .map((category) => {
+        const categoryUnpaidTransactions = unpaidTransactions.filter((transaction) => transaction.category === category);
+        return {
+          category,
+          total: sum(categoryUnpaidTransactions),
+          unpaid: categoryUnpaidTransactions.length
+        };
+      })
+      .sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
+  }, [state.transactions, unpaidTransactions]);
 
-  const accountTotals = accounts.map((account) => {
-    const unpaidTransactions = allUnpaidTransactions.filter((transaction) => transaction.account === account);
-    const total = sum(unpaidTransactions);
-    return {
-      account,
-      total,
-      unpaid: unpaidTransactions.length
-    };
-  }).sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
-
-  function updateState(updater: (current: AppState) => AppState) {
+  function updateState(updater: (current: NovoState) => NovoState) {
     setState((current) => updater(current));
-  }
-
-  function openRecurringModal() {
-    setRecurringTransactionDates({
-      PP1: defaultDateForPayPeriod(`${state.activeMonth}-PP1`),
-      PP2: defaultDateForPayPeriod(`${state.activeMonth}-PP2`)
-    });
-    setIsRecurringModalOpen(true);
-  }
-
-  function changeMonth(month: string) {
-    updateState((current) => ({
-      ...current,
-      activeMonth: month,
-      activePayPeriod: `${month}-PP1`
-    }));
   }
 
   function addTransaction(event: FormEvent<HTMLFormElement>) {
@@ -187,22 +155,21 @@ export default function TransactionsPage() {
     const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
     const saveAndAddAnother = submitter?.value === "add-another";
     const form = new FormData(event.currentTarget);
-    const amount = Number(form.get("amount"));
-    const paid = form.get("paid") === "Yes";
-    const transactionDate = String(form.get("date"));
+    const category = String(form.get("category"));
 
-    const transaction: Transaction = {
+    if (!categories.includes(category)) {
+      setTransactionError("Select a category.");
+      return;
+    }
+
+    const transaction: NovoTransaction = {
       id: crypto.randomUUID(),
-      payPeriod: fallbackPayPeriodForDate(transactionDate, state.activeMonth),
-      date: transactionDate,
+      date: String(form.get("date")),
       merchant: String(form.get("merchant")).trim(),
-      amount,
-      category: String(form.get("category")),
-      subcategory: String(form.get("subcategory")),
-      expenseType: String(form.get("expenseType") ?? ""),
-      account: String(form.get("account")),
-      paid,
-      paidDate: "",
+      amount: Number(form.get("amount")),
+      category,
+      account: String(form.get("account") || defaultAccount),
+      paid: form.get("paid") === "Yes",
       notes: String(form.get("notes") ?? "").trim()
     };
 
@@ -211,7 +178,6 @@ export default function TransactionsPage() {
       transactions: [transaction, ...current.transactions]
     }));
     event.currentTarget.reset();
-    setAddCategory("");
     setTransactionError("");
     if (!saveAndAddAnother) {
       setIsAddModalOpen(false);
@@ -261,31 +227,18 @@ export default function TransactionsPage() {
     setSelectedPaymentNote("");
   }
 
-  function startEditing(transaction: Transaction) {
+  function startEditing(transaction: NovoTransaction) {
     setEditingId(transaction.id);
     setEditingTransaction({ ...transaction });
-    setEditingError("");
   }
 
-  function updateEditing<K extends keyof Transaction>(key: K, value: Transaction[K]) {
-    setEditingTransaction((current) => {
-      if (!current) return current;
-      if (key === "category") {
-        const category = String(value);
-        return {
-          ...current,
-          category,
-          subcategory: categorySubcategories[category]?.[0] ?? ""
-        };
-      }
-      return { ...current, [key]: value };
-    });
+  function updateEditing<K extends keyof NovoTransaction>(key: K, value: NovoTransaction[K]) {
+    setEditingTransaction((current) => current ? { ...current, [key]: value } : current);
   }
 
   function cancelEditing() {
     setEditingId(null);
     setEditingTransaction(null);
-    setEditingError("");
   }
 
   function saveEditing() {
@@ -294,106 +247,28 @@ export default function TransactionsPage() {
     updateState((current) => ({
       ...current,
       transactions: current.transactions.map((transaction) =>
-        transaction.id === editingTransaction.id ? editingTransaction : transaction
+        transaction.id === editingTransaction.id ? normalizeTransaction(editingTransaction) : transaction
       )
     }));
     cancelEditing();
   }
 
-  function addRecurringExpense(event: FormEvent<HTMLFormElement>, periodSlot: PayPeriodSlot) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const expense: RecurringExpense = {
-      id: crypto.randomUUID(),
-      periodSlot,
-      merchant: String(form.get("merchant")).trim(),
-      amount: Number(form.get("amount")),
-      category: String(form.get("category")),
-      subcategory: String(form.get("subcategory")),
-      expenseType: "Planned",
-      account: String(form.get("account"))
-    };
-
-    updateState((current) => ({
-      ...current,
-      recurringExpenses: [...current.recurringExpenses, expense]
-    }));
-    event.currentTarget.reset();
-    setRecurringCategories((current) => ({ ...current, [periodSlot]: "Income" }));
-  }
-
-  function updateRecurringExpense<K extends keyof RecurringExpense>(id: string, key: K, value: RecurringExpense[K]) {
-    updateState((current) => ({
-      ...current,
-      recurringExpenses: current.recurringExpenses.map((expense) => {
-        if (expense.id !== id) return expense;
-        if (key === "category") {
-          const category = String(value);
-          return {
-            ...expense,
-            category,
-            subcategory: categorySubcategories[category]?.[0] ?? ""
-          };
-        }
-        return { ...expense, [key]: value };
-      })
-    }));
-  }
-
-  function deleteRecurringExpense(id: string) {
-    updateState((current) => ({
-      ...current,
-      recurringExpenses: current.recurringExpenses.filter((expense) => expense.id !== id)
-    }));
-  }
-
-  function addRecurringToPayPeriod(periodSlot: PayPeriodSlot) {
-    const payPeriod = `${state.activeMonth}-${periodSlot}`;
-    const transactionDate = recurringTransactionDates[periodSlot] || defaultDateForPayPeriod(payPeriod);
-    const transactions = recurringExpenseGroups[periodSlot].map((expense) => {
-      const paid = expense.amount > 0;
-      return {
-        id: crypto.randomUUID(),
-        payPeriod,
-        date: transactionDate,
-        merchant: expense.merchant,
-        amount: expense.amount,
-        category: expense.category,
-        subcategory: expense.subcategory,
-        expenseType: expense.expenseType,
-        account: expense.account,
-        paid,
-        paidDate: "",
-        notes: ""
-      };
-    });
-
-    updateState((current) => ({
-      ...current,
-      transactions: [...transactions, ...current.transactions]
-    }));
-    setIsRecurringModalOpen(false);
-  }
-
   function exportCsv() {
-    const header = ["Pay Period", "Date", "Merchant", "Amount", "Category", "Subcategory", "Type of Expense", "Account", "Account Paid?", "Notes"];
+    const header = ["Date", "Merchant", "Amount", "Category", "Account", "Paid", "Notes"];
     const rows = state.transactions.map((transaction) => [
-      transaction.payPeriod,
       transaction.date,
       transaction.merchant,
       transaction.amount,
       transaction.category,
-      transaction.subcategory,
-      transaction.expenseType,
       transaction.account,
       transaction.paid ? "Yes" : "No",
       transaction.notes
     ]);
-    download("transactions.csv", [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\n"), "text/csv");
+    download("novo-transactions.csv", [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\n"), "text/csv");
   }
 
   return (
-    <main className="screen">
+    <main className="screen novo-screen">
       <header className="app-header">
         <div className="header-actions">
           <img className="app-logo" src="/android-chrome-192x192.png" alt="Cash Flow" />
@@ -410,15 +285,15 @@ export default function TransactionsPage() {
             >
               <span>
                 <small>Account</small>
-                Chase
+                Novo
               </span>
               <ChevronDownIcon />
             </button>
             {showAccountMenu && (
               <div className="account-menu-panel">
-                <a className="active" href="/" aria-current="page">Chase</a>
+                <a href="/">Chase</a>
                 <a href="/sofi">SoFi</a>
-                <a href="/novo">Novo</a>
+                <a className="active" href="/novo" aria-current="page">Novo</a>
                 <form action="/api/logout" method="post">
                   <button type="submit">Log out</button>
                 </form>
@@ -451,7 +326,6 @@ export default function TransactionsPage() {
             </button>
             {showMoreMenu && (
               <div className="more-menu-panel">
-                <a className="ghost-button" href="/analytics">Analytics</a>
                 <button
                   type="button"
                   className="ghost-button desktop-hidden-menu-item"
@@ -461,16 +335,6 @@ export default function TransactionsPage() {
                   }}
                 >
                   Summary
-                </button>
-                <button
-                  type="button"
-                  className="ghost-button"
-                  onClick={() => {
-                    openRecurringModal();
-                    setShowMoreMenu(false);
-                  }}
-                >
-                  Recurring
                 </button>
               </div>
             )}
@@ -482,14 +346,10 @@ export default function TransactionsPage() {
         <section className="toolbar" aria-label="Transaction controls">
           <label>
             Show
-            <select value={transactionViewFilter} onChange={(event) => setTransactionViewFilter(event.target.value as TransactionViewFilter)}>
-              <option value="unpaid">Unpaid items</option>
-              <option value="month">Selected month</option>
+            <select value={viewFilter} onChange={(event) => setViewFilter(event.target.value as NovoViewFilter)}>
+              <option value="unpaid">Unpaid transactions</option>
+              <option value="all">All transactions</option>
             </select>
-          </label>
-          <label>
-            Month
-            <input type="month" value={state.activeMonth} onChange={(event) => changeMonth(event.target.value)} />
           </label>
           <label className="search-field">
             Search
@@ -501,15 +361,15 @@ export default function TransactionsPage() {
         </section>
       )}
 
-      <section className={showMobileSummary ? "account-strip mobile-summary-open" : "account-strip"} aria-label="Account summary">
+      <section className={showMobileSummary ? "account-strip novo-account-strip mobile-summary-open" : "account-strip novo-account-strip"} aria-label="Account summary">
         <article className="account-card balance-card desktop-balance-card">
           <strong>Balance</strong>
           <BalanceAmount hydrated={hydrated} balance={balance} />
           <small>Available to spend</small>
         </article>
-        {accountTotals.map((item) => (
-          <article className="account-card" key={item.account}>
-            <strong>{item.account}</strong>
+        {categoryTotals.map((item) => (
+          <article className="account-card" key={item.category}>
+            <strong>{item.category}</strong>
             <span className={item.total < 0 ? "danger-text" : "good-text"}>{money(item.total)}</span>
             <small>{item.unpaid} unpaid</small>
           </article>
@@ -525,7 +385,7 @@ export default function TransactionsPage() {
             </div>
           </div>
           <div className="table-wrap">
-            <table>
+            <table className="novo-table">
               <thead>
                 <tr>
                   <th className="select-column">Select</th>
@@ -533,7 +393,6 @@ export default function TransactionsPage() {
                   <th>Merchant</th>
                   <th>Amount</th>
                   <th>Category</th>
-                  <th>Subcategory</th>
                   <th>Account</th>
                   <th>Paid</th>
                   <th>Notes</th>
@@ -559,11 +418,6 @@ export default function TransactionsPage() {
                           </select>
                         </td>
                         <td>
-                          <select className="table-input" value={editingTransaction.subcategory} onChange={(event) => updateEditing("subcategory", event.target.value)}>
-                            {(categorySubcategories[editingTransaction.category] ?? []).map((subcategory) => <option key={subcategory}>{subcategory}</option>)}
-                          </select>
-                        </td>
-                        <td>
                           <select className="table-input" value={editingTransaction.account} onChange={(event) => updateEditing("account", event.target.value)}>
                             {accounts.map((account) => <option key={account}>{account}</option>)}
                           </select>
@@ -574,19 +428,8 @@ export default function TransactionsPage() {
                             <option>No</option>
                           </select>
                         </td>
-                        <td>
-                          <input className="table-input" value={editingTransaction.notes} onChange={(event) => updateEditing("notes", event.target.value)} />
-                        </td>
+                        <td><input className="table-input" value={editingTransaction.notes} onChange={(event) => updateEditing("notes", event.target.value)} /></td>
                         <td className="actions-column">
-                          <div className="row-detail-fields">
-                            <label>
-                              Type
-                              <select className="table-input" value={editingTransaction.expenseType} onChange={(event) => updateEditing("expenseType", event.target.value)}>
-                                <option value="">None</option>
-                                {expenseTypes.map((expenseType) => <option key={expenseType}>{expenseType}</option>)}
-                              </select>
-                            </label>
-                          </div>
                           <div className="row-actions">
                             <button type="button" className="icon-button save-icon-button" aria-label="Save transaction" title="Save" onClick={saveEditing}>
                               <CheckIcon />
@@ -595,7 +438,6 @@ export default function TransactionsPage() {
                               <XIcon />
                             </button>
                           </div>
-                          {editingError && <div className="action-error">{editingError}</div>}
                         </td>
                       </tr>
                     );
@@ -617,7 +459,6 @@ export default function TransactionsPage() {
                       <td>{transaction.merchant}</td>
                       <td className={transaction.amount < 0 ? "danger-text" : "good-text"}>{money(transaction.amount)}</td>
                       <td>{transaction.category}</td>
-                      <td>{transaction.subcategory}</td>
                       <td>{transaction.account}</td>
                       <td>
                         <button type="button" className={transaction.paid ? "status paid" : "status unpaid"} onClick={() => togglePaid(transaction.id)}>
@@ -631,23 +472,17 @@ export default function TransactionsPage() {
                             <button
                               type="button"
                               className="icon-button"
-                              aria-label={`More details for ${transaction.merchant}`}
-                              title="More details"
+                              aria-label={`More actions for ${transaction.merchant}`}
+                              title="More actions"
                               aria-expanded={isDetailsOpen}
                               onClick={() => setOpenTransactionDetailsId((current) => current === transaction.id ? null : transaction.id)}
                             >
                               <DotsIcon />
                             </button>
                             {isDetailsOpen && (
-                              <div className="transaction-detail-panel">
-                                <dl>
-                                  <div>
-                                    <dt>Type</dt>
-                                    <dd>{transaction.expenseType || "None"}</dd>
-                                  </div>
-                                </dl>
+                              <div className="transaction-detail-panel novo-action-panel">
                                 <button type="button" className="menu-delete-button" onClick={() => deleteTransaction(transaction.id)}>
-                                  Delete transaction
+                                  Delete
                                 </button>
                               </div>
                             )}
@@ -661,7 +496,7 @@ export default function TransactionsPage() {
                   );
                 }) : (
                   <tr>
-                    <td colSpan={10}><div className="empty-state">{transactionViewFilter === "month" ? "No transactions for this month yet." : "No unpaid transactions yet."}</div></td>
+                    <td colSpan={9}><div className="empty-state">{viewFilter === "unpaid" ? "No unpaid transactions yet." : "No transactions yet."}</div></td>
                   </tr>
                 )}
               </tbody>
@@ -670,12 +505,10 @@ export default function TransactionsPage() {
         </section>
       </section>
 
-      <section className="metric-grid bottom-stats" aria-label="Monthly summary">
-        <Metric label="Income" value={money(monthIncome)} tone="good" />
-        <Metric label="Planned expenses" value={money(plannedExpenses)} tone="warn" />
-        <Metric label="Spending" value={money(monthSpending)} tone="danger" />
+      <section className="metric-grid novo-metric-grid bottom-stats" aria-label="Novo summary">
+        <Metric label="Balance" value={hydrated ? money(balance) : ""} tone={balance >= 0 ? "good" : "danger"} loading={!hydrated} />
+        <Metric label="Unpaid total" value={money(sum(unpaidTransactions))} tone={sum(unpaidTransactions) >= 0 ? "good" : "danger"} />
         <Metric label="Unpaid items" value={String(unpaidCount)} tone={unpaidCount ? "warn" : "good"} />
-        <Metric label="Total transactions" value={String(transactionCount)} tone="good" />
       </section>
 
       {selectedTransactions.length > 0 && (
@@ -713,7 +546,7 @@ export default function TransactionsPage() {
         <div className="modal-backdrop" role="presentation">
           <section className="modal-panel" role="dialog" aria-modal="true" aria-labelledby="add-transaction-title">
             <div className="modal-heading">
-              <h2 id="add-transaction-title">Add transaction</h2>
+              <h2 id="add-transaction-title">Add Novo transaction</h2>
               <button type="button" className="delete-button" onClick={() => setIsAddModalOpen(false)}>x</button>
             </div>
             <form className="entry-panel modal-form add-transaction-form" onSubmit={addTransaction}>
@@ -722,9 +555,9 @@ export default function TransactionsPage() {
                   Date
                   <input name="date" type="date" defaultValue={todayIso()} required />
                 </label>
-                <label className="span-2">
+                <label>
                   Merchant
-                  <input name="merchant" type="text" placeholder="Kroger, Netflix, Paycheck" required />
+                  <input name="merchant" type="text" placeholder="Merchant or source" required />
                 </label>
                 <label>
                   Amount
@@ -732,27 +565,19 @@ export default function TransactionsPage() {
                 </label>
                 <label>
                   Category
-                  <select name="category" value={addCategory} onChange={(event) => setAddCategory(event.target.value)} required>
+                  <select name="category" defaultValue="" required>
                     <option value="">Select category</option>
                     {categories.map((category) => <option key={category}>{category}</option>)}
                   </select>
                 </label>
                 <label>
-                  Subcategory
-                  <select key={addCategory} name="subcategory" defaultValue="" required disabled={!addCategory}>
-                    <option value="">Select subcategory</option>
-                    {(categorySubcategories[addCategory] ?? []).map((subcategory) => <option key={subcategory}>{subcategory}</option>)}
-                  </select>
-                </label>
-                <label>
                   Account
-                  <select name="account" defaultValue="" required>
-                    <option value="">Select account</option>
+                  <select name="account" defaultValue={defaultAccount} required>
                     {accounts.map((account) => <option key={account}>{account}</option>)}
                   </select>
                 </label>
                 <label>
-                  Account paid?
+                  Paid?
                   <select name="paid" defaultValue="No" required>
                     <option>No</option>
                     <option>Yes</option>
@@ -773,129 +598,37 @@ export default function TransactionsPage() {
           </section>
         </div>
       )}
-
-      {isRecurringModalOpen && (
-        <div className="modal-backdrop" role="presentation">
-          <section className="modal-panel wide-modal" role="dialog" aria-modal="true" aria-labelledby="recurring-title">
-            <div className="modal-heading">
-              <div>
-                <h2 id="recurring-title">Recurring expenses</h2>
-                <p>{state.recurringExpenses.length} recurring items</p>
-              </div>
-              <button type="button" className="delete-button" onClick={() => setIsRecurringModalOpen(false)}>x</button>
-            </div>
-
-            <div className="recurring-content">
-              <div className="recurring-list">
-                {(["PP1", "PP2"] as PayPeriodSlot[]).map((periodSlot) => (
-                  <section className="recurring-group" key={periodSlot} aria-labelledby={`recurring-${periodSlot}`}>
-                    <div className="recurring-group-heading">
-                      <div>
-                        <h3 id={`recurring-${periodSlot}`}>{periodSlot}</h3>
-                        <span>{recurringExpenseGroups[periodSlot].length} items</span>
-                      </div>
-                      <div className="recurring-group-controls">
-                        <label className="recurring-date-field">
-                          Transaction date
-                          <input
-                            type="date"
-                            value={recurringTransactionDates[periodSlot]}
-                            onChange={(event) => setRecurringTransactionDates((current) => ({ ...current, [periodSlot]: event.target.value }))}
-                          />
-                        </label>
-                        <button type="button" className="primary-button" onClick={() => addRecurringToPayPeriod(periodSlot)}>
-                          Add {periodSlot} expenses
-                        </button>
-                      </div>
-                    </div>
-                    <div className="recurring-group-list">
-                      {recurringExpenseGroups[periodSlot].map((expense) => (
-                        <article className="recurring-row" key={expense.id}>
-                          <label>
-                            Name
-                            <input value={expense.merchant} onChange={(event) => updateRecurringExpense(expense.id, "merchant", event.target.value)} />
-                          </label>
-                          <label>
-                            Amount
-                            <input type="number" step="0.01" value={expense.amount} onChange={(event) => updateRecurringExpense(expense.id, "amount", Number(event.target.value))} />
-                          </label>
-                          <label>
-                            Category
-                            <select value={expense.category} onChange={(event) => updateRecurringExpense(expense.id, "category", event.target.value)}>
-                              {categories.map((category) => <option key={category}>{category}</option>)}
-                            </select>
-                          </label>
-                          <label>
-                            Subcategory
-                            <select value={expense.subcategory} onChange={(event) => updateRecurringExpense(expense.id, "subcategory", event.target.value)}>
-                              {(categorySubcategories[expense.category] ?? []).map((subcategory) => <option key={subcategory}>{subcategory}</option>)}
-                            </select>
-                          </label>
-                          <label>
-                            Account
-                            <select value={expense.account} onChange={(event) => updateRecurringExpense(expense.id, "account", event.target.value)}>
-                              {accounts.map((account) => <option key={account}>{account}</option>)}
-                            </select>
-                          </label>
-                          <button type="button" className="delete-button recurring-delete" onClick={() => deleteRecurringExpense(expense.id)}>x</button>
-                        </article>
-                      ))}
-                    </div>
-                    <form className="recurring-add-form" onSubmit={(event) => addRecurringExpense(event, periodSlot)}>
-                      <h3>Add {periodSlot} recurring item</h3>
-                      <div className="field-grid">
-                        <label>
-                          Name
-                          <input name="merchant" required />
-                        </label>
-                        <label>
-                          Amount
-                          <input name="amount" type="number" step="0.01" required />
-                        </label>
-                        <label>
-                          Category
-                          <select
-                            name="category"
-                            value={recurringCategories[periodSlot]}
-                            onChange={(event) => setRecurringCategories((current) => ({ ...current, [periodSlot]: event.target.value }))}
-                            required
-                          >
-                            {categories.map((category) => <option key={category}>{category}</option>)}
-                          </select>
-                        </label>
-                        <label>
-                          Subcategory
-                          <select name="subcategory" required>
-                            {categorySubcategories[recurringCategories[periodSlot]].map((subcategory) => <option key={subcategory}>{subcategory}</option>)}
-                          </select>
-                        </label>
-                        <label>
-                          Account
-                          <select name="account" required>
-                            {accounts.map((account) => <option key={account}>{account}</option>)}
-                          </select>
-                        </label>
-                      </div>
-                      <button className="primary-button" type="submit">Save {periodSlot} item</button>
-                    </form>
-                  </section>
-                ))}
-              </div>
-            </div>
-          </section>
-        </div>
-      )}
-
     </main>
   );
 }
 
-function Metric({ label, value, tone }: { label: string; value: string; tone: "good" | "warn" | "danger" }) {
+function Metric({ label, value, tone, loading = false }: { label: string; value: string; tone: "good" | "warn" | "danger"; loading?: boolean }) {
   return (
     <article className="metric">
       <span>{label}</span>
-      <strong className={`${tone}-text`}>{value}</strong>
+      {loading ? (
+        <strong className="skeleton-text skeleton-metric" aria-label={`Loading ${label.toLowerCase()}`} />
+      ) : (
+        <strong className={`${tone}-text`}>{value}</strong>
+      )}
     </article>
+  );
+}
+
+function BalanceAmount({ hydrated, balance }: { hydrated: boolean; balance: number }) {
+  if (!hydrated) {
+    return <span className="skeleton-text skeleton-balance" aria-label="Loading balance" />;
+  }
+
+  return <span className={balance >= 0 ? "good-text" : "danger-text"}>{money(balance)}</span>;
+}
+
+function PencilIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
   );
 }
 
@@ -918,22 +651,6 @@ function FilterIcon() {
   );
 }
 
-function BalanceAmount({ hydrated, balance }: { hydrated: boolean; balance: number }) {
-  if (!hydrated) {
-    return <span className="skeleton-text skeleton-balance" aria-label="Loading balance" />;
-  }
-
-  return <span className={balance >= 0 ? "good-text" : "danger-text"}>{money(balance)}</span>;
-}
-
-function ChevronDownIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  );
-}
-
 function DotsIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -944,11 +661,10 @@ function DotsIcon() {
   );
 }
 
-function PencilIcon() {
+function ChevronDownIcon() {
   return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M12 20h9" />
-      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="m6 9 6 6 6-6" />
     </svg>
   );
 }
@@ -970,23 +686,67 @@ function XIcon() {
   );
 }
 
-function monthFromDate(date: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.slice(0, 7) : "";
+function normalizeState(state: NovoState): NovoState {
+  return {
+    transactions: (state.transactions ?? []).map(normalizeTransaction)
+  };
 }
 
-function formatMonth(month: string) {
-  const [year, monthNumber] = month.split("-");
+function normalizeTransaction(transaction: NovoTransaction): NovoTransaction {
+  const category = categories.includes(transaction.category) ? transaction.category : "Spending/Thread Stash";
+  const account = transaction.account === "Novo" ? defaultAccount : transaction.account;
 
-  return new Date(Number(year), Number(monthNumber) - 1, 1).toLocaleDateString(undefined, {
-    month: "long",
-    year: "numeric"
+  return {
+    ...transaction,
+    category,
+    account: accounts.includes(account) ? account : defaultAccount,
+    paid: Boolean(transaction.paid),
+    notes: transaction.notes ?? ""
+  };
+}
+
+function loadLocalState() {
+  const saved = window.localStorage.getItem(STORAGE_KEY);
+
+  if (!saved) {
+    return null;
+  }
+
+  try {
+    return normalizeState(JSON.parse(saved) as NovoState);
+  } catch {
+    return null;
+  }
+}
+
+function sum(transactions: NovoTransaction[]) {
+  return transactions.reduce((total, transaction) => total + transaction.amount, 0);
+}
+
+function compareTransactions(a: NovoTransaction, b: NovoTransaction) {
+  const dateOrder = a.date.localeCompare(b.date);
+
+  if (dateOrder !== 0) {
+    return dateOrder;
+  }
+
+  return a.merchant.localeCompare(b.merchant);
+}
+
+function money(value: number) {
+  const formatted = Math.abs(value).toLocaleString(undefined, { style: "currency", currency: "USD" });
+  return value < 0 ? `-${formatted}` : formatted;
+}
+
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function formatDate(date: string) {
+  return new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
+    month: "numeric",
+    day: "numeric"
   });
-}
-
-function fallbackPayPeriodForDate(date: string, fallbackMonth: string) {
-  const month = monthFromDate(date) || fallbackMonth;
-
-  return `${month}-PP1`;
 }
 
 function csvCell(value: unknown) {

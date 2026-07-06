@@ -39,8 +39,10 @@ export const config = {
     "/",
     "/analytics",
     "/sofi",
+    "/novo",
     "/api/state/:path*",
     "/api/sofi-state/:path*",
+    "/api/novo-state/:path*",
     "/login"
   ]
 };

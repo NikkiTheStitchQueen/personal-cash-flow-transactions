@@ -293,6 +293,7 @@ export default function SofiTransactionsPage() {
               <div className="account-menu-panel">
                 <a href="/">Chase</a>
                 <a className="active" href="/sofi" aria-current="page">SoFi</a>
+                <a href="/novo">Novo</a>
                 <form action="/api/logout" method="post">
                   <button type="submit">Log out</button>
                 </form>
