@@ -1,4 +1,4 @@
-import { neon } from "@neondatabase/serverless";
+import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -38,7 +38,7 @@ type AppState = {
   recurringExpenses: RecurringExpense[];
 };
 
-type Sql = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<Record<string, unknown>[]>;
+type Sql = NeonQueryFunction<false, false>;
 
 let schemaReady = false;
 
@@ -193,84 +193,106 @@ export async function PUT(request: Request) {
 
   const state = await request.json() as AppState;
 
+  if (!isValidState(state)) {
+    return NextResponse.json({ configured: true, error: "Invalid cash-flow state." }, { status: 400 });
+  }
+
   await ensureSchema(sql);
 
-  await sql`
-    insert into cash_flow_settings (id, active_month, active_pay_period, updated_at)
-    values (1, ${state.activeMonth}, ${state.activePayPeriod}, now())
-    on conflict (id) do update set
-      active_month = excluded.active_month,
-      active_pay_period = excluded.active_pay_period,
-      updated_at = now()
-  `;
+  const transactionIds = state.transactions.map((transaction) => transaction.id);
+  const recurringExpenseIds = state.recurringExpenses.map((expense) => expense.id);
 
-  await sql`delete from cash_flow_transactions`;
-
-  for (const transaction of state.transactions) {
-    await sql`
+  await sql.transaction((tx) => [
+    tx`
+      insert into cash_flow_settings (id, active_month, active_pay_period, updated_at)
+      values (1, ${state.activeMonth}, ${state.activePayPeriod}, now())
+      on conflict (id) do update set
+        active_month = excluded.active_month,
+        active_pay_period = excluded.active_pay_period,
+        updated_at = now()
+    `,
+    ...state.transactions.map((transaction) => tx`
       insert into cash_flow_transactions (
-        id,
-        pay_period,
-        transaction_date,
-        merchant,
-        amount,
-        category,
-        subcategory,
-        expense_type,
-        account,
-        paid,
-        paid_date,
-        notes,
-        updated_at
+        id, pay_period, transaction_date, merchant, amount, category,
+        subcategory, expense_type, account, paid, paid_date, notes, updated_at
       )
       values (
-        ${transaction.id},
-        ${transaction.payPeriod},
-        ${transaction.date},
-        ${transaction.merchant},
-        ${transaction.amount},
-        ${transaction.category},
-        ${transaction.subcategory},
-        ${transaction.expenseType},
-        ${transaction.account},
-        ${transaction.paid},
-        ${null},
-        ${transaction.paidDate || transaction.notes},
-        now()
+        ${transaction.id}, ${transaction.payPeriod}, ${transaction.date},
+        ${transaction.merchant}, ${transaction.amount}, ${transaction.category},
+        ${transaction.subcategory}, ${transaction.expenseType}, ${transaction.account},
+        ${transaction.paid}, ${null}, ${transaction.paidDate || transaction.notes}, now()
       )
-    `;
-  }
-
-  await sql`delete from cash_flow_recurring_expenses`;
-
-  for (const expense of state.recurringExpenses) {
-    await sql`
+      on conflict (id) do update set
+        pay_period = excluded.pay_period,
+        transaction_date = excluded.transaction_date,
+        merchant = excluded.merchant,
+        amount = excluded.amount,
+        category = excluded.category,
+        subcategory = excluded.subcategory,
+        expense_type = excluded.expense_type,
+        account = excluded.account,
+        paid = excluded.paid,
+        paid_date = excluded.paid_date,
+        notes = excluded.notes,
+        updated_at = now()
+    `),
+    tx`
+      delete from cash_flow_transactions
+      where id not in (select jsonb_array_elements_text(${JSON.stringify(transactionIds)}::jsonb))
+    `,
+    ...state.recurringExpenses.map((expense) => tx`
       insert into cash_flow_recurring_expenses (
-        id,
-        period_slot,
-        merchant,
-        amount,
-        category,
-        subcategory,
-        expense_type,
-        account,
-        updated_at
+        id, period_slot, merchant, amount, category, subcategory,
+        expense_type, account, updated_at
       )
       values (
-        ${expense.id},
-        ${expense.periodSlot},
-        ${expense.merchant},
-        ${expense.amount},
-        ${expense.category},
-        ${expense.subcategory},
-        'Planned',
-        ${expense.account},
-        now()
+        ${expense.id}, ${expense.periodSlot}, ${expense.merchant}, ${expense.amount},
+        ${expense.category}, ${expense.subcategory}, 'Planned', ${expense.account}, now()
       )
-    `;
-  }
+      on conflict (id) do update set
+        period_slot = excluded.period_slot,
+        merchant = excluded.merchant,
+        amount = excluded.amount,
+        category = excluded.category,
+        subcategory = excluded.subcategory,
+        expense_type = excluded.expense_type,
+        account = excluded.account,
+        updated_at = now()
+    `),
+    tx`
+      delete from cash_flow_recurring_expenses
+      where id not in (select jsonb_array_elements_text(${JSON.stringify(recurringExpenseIds)}::jsonb))
+    `
+  ]);
 
   return NextResponse.json({ configured: true });
+}
+
+function isValidState(value: unknown): value is AppState {
+  if (!value || typeof value !== "object") return false;
+
+  const state = value as Partial<AppState>;
+  if (!/^\d{4}-\d{2}$/.test(state.activeMonth ?? "")) return false;
+  if (typeof state.activePayPeriod !== "string") return false;
+  if (!Array.isArray(state.transactions) || !Array.isArray(state.recurringExpenses)) return false;
+
+  const transactionIds = new Set<string>();
+  for (const transaction of state.transactions) {
+    if (!transaction || typeof transaction !== "object") return false;
+    if (!transaction.id || transactionIds.has(transaction.id)) return false;
+    if (!Number.isFinite(transaction.amount) || !/^\d{4}-\d{2}-\d{2}$/.test(transaction.date)) return false;
+    transactionIds.add(transaction.id);
+  }
+
+  const recurringIds = new Set<string>();
+  for (const expense of state.recurringExpenses) {
+    if (!expense || typeof expense !== "object") return false;
+    if (!expense.id || recurringIds.has(expense.id)) return false;
+    if (!Number.isFinite(expense.amount) || !["PP1", "PP2"].includes(expense.periodSlot)) return false;
+    recurringIds.add(expense.id);
+  }
+
+  return true;
 }
 
 function isoDate(value: unknown) {
