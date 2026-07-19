@@ -97,23 +97,7 @@ export default function TransactionsPage() {
     if (!hydrated) return;
 
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-
-    if (persistenceTarget !== "database") return;
-
-    const timeout = window.setTimeout(async () => {
-      try {
-        await fetch("/api/state", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(state)
-        });
-      } catch {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      }
-    }, 500);
-
-    return () => window.clearTimeout(timeout);
-  }, [hydrated, persistenceTarget, state]);
+  }, [hydrated, state]);
 
   useEffect(() => {
     setSelectedTransactionIds([]);
@@ -166,6 +150,33 @@ export default function TransactionsPage() {
     setState((current) => updater(current));
   }
 
+  async function persistRow(method: "POST" | "PATCH", resource: "transaction" | "recurringExpense" | "settings", value: unknown) {
+    if (persistenceTarget !== "database") return;
+
+    try {
+      const response = await fetch("/api/state", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resource, value })
+      });
+
+      if (!response.ok) throw new Error("Save failed");
+    } catch {
+      setTransactionError("This change is saved on this device but could not be saved to the database.");
+    }
+  }
+
+  async function persistDelete(resource: "transaction" | "recurringExpense", id: string) {
+    if (persistenceTarget !== "database") return;
+
+    try {
+      const response = await fetch(`/api/state?resource=${resource}&id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Delete failed");
+    } catch {
+      setTransactionError("This item was removed on this device but could not be removed from the database.");
+    }
+  }
+
   function openRecurringModal() {
     setRecurringTransactionDates({
       PP1: defaultDateForPayPeriod(`${state.activeMonth}-PP1`),
@@ -175,11 +186,15 @@ export default function TransactionsPage() {
   }
 
   function changeMonth(month: string) {
-    updateState((current) => ({
-      ...current,
+    const settings = {
       activeMonth: month,
       activePayPeriod: `${month}-PP1`
+    };
+    updateState((current) => ({
+      ...current,
+      ...settings
     }));
+    void persistRow("PATCH", "settings", settings);
   }
 
   function addTransaction(event: FormEvent<HTMLFormElement>) {
@@ -210,6 +225,7 @@ export default function TransactionsPage() {
       ...current,
       transactions: [transaction, ...current.transactions]
     }));
+    void persistRow("POST", "transaction", transaction);
     event.currentTarget.reset();
     setAddCategory("");
     setTransactionError("");
@@ -227,16 +243,21 @@ export default function TransactionsPage() {
     if (editingId === id) {
       cancelEditing();
     }
+    void persistDelete("transaction", id);
   }
 
   function togglePaid(id: string) {
+    const transaction = state.transactions.find((item) => item.id === id);
+    if (!transaction) return;
+    const updatedTransaction = { ...transaction, paid: !transaction.paid };
     updateState((current) => ({
       ...current,
       transactions: current.transactions.map((transaction) =>
-        transaction.id === id ? { ...transaction, paid: !transaction.paid } : transaction
+        transaction.id === id ? updatedTransaction : transaction
       )
     }));
     setSelectedTransactionIds((current) => current.filter((selectedId) => selectedId !== id));
+    void persistRow("PATCH", "transaction", updatedTransaction);
   }
 
   function toggleTransactionSelection(id: string) {
@@ -257,6 +278,9 @@ export default function TransactionsPage() {
         selectedIds.has(transaction.id) ? { ...transaction, paid: true, notes: paymentNote } : transaction
       )
     }));
+    selectedTransactions.forEach((transaction) => {
+      void persistRow("PATCH", "transaction", { ...transaction, paid: true, notes: paymentNote });
+    });
     setSelectedTransactionIds([]);
     setSelectedPaymentNote("");
   }
@@ -297,6 +321,7 @@ export default function TransactionsPage() {
         transaction.id === editingTransaction.id ? editingTransaction : transaction
       )
     }));
+    void persistRow("PATCH", "transaction", editingTransaction);
     cancelEditing();
   }
 
@@ -318,26 +343,30 @@ export default function TransactionsPage() {
       ...current,
       recurringExpenses: [...current.recurringExpenses, expense]
     }));
+    void persistRow("POST", "recurringExpense", expense);
     event.currentTarget.reset();
     setRecurringCategories((current) => ({ ...current, [periodSlot]: "Income" }));
   }
 
   function updateRecurringExpense<K extends keyof RecurringExpense>(id: string, key: K, value: RecurringExpense[K]) {
+    const existingExpense = state.recurringExpenses.find((expense) => expense.id === id);
+    if (!existingExpense) return;
+    const updatedExpense = key === "category"
+      ? {
+          ...existingExpense,
+          category: String(value),
+          subcategory: categorySubcategories[String(value)]?.[0] ?? ""
+        }
+      : { ...existingExpense, [key]: value };
     updateState((current) => ({
       ...current,
-      recurringExpenses: current.recurringExpenses.map((expense) => {
-        if (expense.id !== id) return expense;
-        if (key === "category") {
-          const category = String(value);
-          return {
-            ...expense,
-            category,
-            subcategory: categorySubcategories[category]?.[0] ?? ""
-          };
-        }
-        return { ...expense, [key]: value };
-      })
+      recurringExpenses: current.recurringExpenses.map((expense) => expense.id === id ? updatedExpense : expense)
     }));
+  }
+
+  function saveRecurringExpense(id: string) {
+    const expense = state.recurringExpenses.find((item) => item.id === id);
+    if (expense) void persistRow("PATCH", "recurringExpense", expense);
   }
 
   function deleteRecurringExpense(id: string) {
@@ -345,6 +374,7 @@ export default function TransactionsPage() {
       ...current,
       recurringExpenses: current.recurringExpenses.filter((expense) => expense.id !== id)
     }));
+    void persistDelete("recurringExpense", id);
   }
 
   function addRecurringToPayPeriod(periodSlot: PayPeriodSlot) {
@@ -372,6 +402,9 @@ export default function TransactionsPage() {
       ...current,
       transactions: [...transactions, ...current.transactions]
     }));
+    transactions.forEach((transaction) => {
+      void persistRow("POST", "transaction", transaction);
+    });
     setIsRecurringModalOpen(false);
   }
 
@@ -816,6 +849,7 @@ export default function TransactionsPage() {
                             aria-label={`${expense.merchant} title`}
                             value={expense.merchant}
                             onChange={(event) => updateRecurringExpense(expense.id, "merchant", event.target.value)}
+                            onBlur={() => saveRecurringExpense(expense.id)}
                           />
                           <input
                             className="recurring-amount-input"
@@ -824,6 +858,7 @@ export default function TransactionsPage() {
                             step="0.01"
                             value={expense.amount}
                             onChange={(event) => updateRecurringExpense(expense.id, "amount", Number(event.target.value))}
+                            onBlur={() => saveRecurringExpense(expense.id)}
                           />
                           <div className="recurring-meta">
                             <span>{expense.category}/{expense.subcategory}</span>

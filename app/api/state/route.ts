@@ -184,115 +184,189 @@ export async function GET() {
   return NextResponse.json({ configured: true, state });
 }
 
-export async function PUT(request: Request) {
+type StateResource = "transaction" | "recurringExpense" | "settings";
+
+export async function POST(request: Request) {
   const sql = await getSql();
 
   if (!sql) {
     return NextResponse.json({ configured: false }, { status: 202 });
   }
 
-  const state = await request.json() as AppState;
-
-  if (!isValidState(state)) {
-    return NextResponse.json({ configured: true, error: "Invalid cash-flow state." }, { status: 400 });
-  }
+  const body = await request.json() as { resource?: StateResource; value?: unknown };
 
   await ensureSchema(sql);
 
-  const transactionIds = state.transactions.map((transaction) => transaction.id);
-  const recurringExpenseIds = state.recurringExpenses.map((expense) => expense.id);
+  if (body.resource === "transaction" && isValidTransaction(body.value)) {
+    await saveTransaction(sql, body.value);
+    return NextResponse.json({ configured: true });
+  }
 
-  await sql.transaction((tx) => [
-    tx`
+  if (body.resource === "recurringExpense" && isValidRecurringExpense(body.value)) {
+    await saveRecurringExpense(sql, body.value);
+    return NextResponse.json({ configured: true });
+  }
+
+  return NextResponse.json({ configured: true, error: "Invalid row." }, { status: 400 });
+}
+
+export async function PATCH(request: Request) {
+  const sql = await getSql();
+
+  if (!sql) {
+    return NextResponse.json({ configured: false }, { status: 202 });
+  }
+
+  const body = await request.json() as { resource?: StateResource; value?: unknown };
+  await ensureSchema(sql);
+
+  if (body.resource === "transaction" && isValidTransaction(body.value)) {
+    await saveTransaction(sql, body.value);
+    return NextResponse.json({ configured: true });
+  }
+
+  if (body.resource === "recurringExpense" && isValidRecurringExpense(body.value)) {
+    await saveRecurringExpense(sql, body.value);
+    return NextResponse.json({ configured: true });
+  }
+
+  if (body.resource === "settings" && isValidSettings(body.value)) {
+    await sql`
       insert into cash_flow_settings (id, active_month, active_pay_period, updated_at)
-      values (1, ${state.activeMonth}, ${state.activePayPeriod}, now())
+      values (1, ${body.value.activeMonth}, ${body.value.activePayPeriod}, now())
       on conflict (id) do update set
         active_month = excluded.active_month,
         active_pay_period = excluded.active_pay_period,
         updated_at = now()
-    `,
-    ...state.transactions.map((transaction) => tx`
-      insert into cash_flow_transactions (
-        id, pay_period, transaction_date, merchant, amount, category,
-        subcategory, expense_type, account, paid, paid_date, notes, updated_at
-      )
-      values (
-        ${transaction.id}, ${transaction.payPeriod}, ${transaction.date},
-        ${transaction.merchant}, ${transaction.amount}, ${transaction.category},
-        ${transaction.subcategory}, ${transaction.expenseType}, ${transaction.account},
-        ${transaction.paid}, ${null}, ${transaction.paidDate || transaction.notes}, now()
-      )
-      on conflict (id) do update set
-        pay_period = excluded.pay_period,
-        transaction_date = excluded.transaction_date,
-        merchant = excluded.merchant,
-        amount = excluded.amount,
-        category = excluded.category,
-        subcategory = excluded.subcategory,
-        expense_type = excluded.expense_type,
-        account = excluded.account,
-        paid = excluded.paid,
-        paid_date = excluded.paid_date,
-        notes = excluded.notes,
-        updated_at = now()
-    `),
-    tx`
-      delete from cash_flow_transactions
-      where id not in (select jsonb_array_elements_text(${JSON.stringify(transactionIds)}::jsonb))
-    `,
-    ...state.recurringExpenses.map((expense) => tx`
-      insert into cash_flow_recurring_expenses (
-        id, period_slot, merchant, amount, category, subcategory,
-        expense_type, account, updated_at
-      )
-      values (
-        ${expense.id}, ${expense.periodSlot}, ${expense.merchant}, ${expense.amount},
-        ${expense.category}, ${expense.subcategory}, 'Planned', ${expense.account}, now()
-      )
-      on conflict (id) do update set
-        period_slot = excluded.period_slot,
-        merchant = excluded.merchant,
-        amount = excluded.amount,
-        category = excluded.category,
-        subcategory = excluded.subcategory,
-        expense_type = excluded.expense_type,
-        account = excluded.account,
-        updated_at = now()
-    `),
-    tx`
-      delete from cash_flow_recurring_expenses
-      where id not in (select jsonb_array_elements_text(${JSON.stringify(recurringExpenseIds)}::jsonb))
-    `
-  ]);
+    `;
+    return NextResponse.json({ configured: true });
+  }
 
-  return NextResponse.json({ configured: true });
+  return NextResponse.json({ configured: true, error: "Invalid row." }, { status: 400 });
 }
 
-function isValidState(value: unknown): value is AppState {
+export async function DELETE(request: Request) {
+  const sql = await getSql();
+
+  if (!sql) {
+    return NextResponse.json({ configured: false }, { status: 202 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const resource = searchParams.get("resource");
+  const id = searchParams.get("id");
+
+  if (!id) {
+    return NextResponse.json({ configured: true, error: "Missing row ID." }, { status: 400 });
+  }
+
+  await ensureSchema(sql);
+
+  if (resource === "transaction") {
+    await sql`delete from cash_flow_transactions where id = ${id}`;
+    return NextResponse.json({ configured: true });
+  }
+
+  if (resource === "recurringExpense") {
+    await sql`delete from cash_flow_recurring_expenses where id = ${id}`;
+    return NextResponse.json({ configured: true });
+  }
+
+  return NextResponse.json({ configured: true, error: "Invalid resource." }, { status: 400 });
+}
+
+async function saveTransaction(sql: Sql, transaction: Transaction) {
+  await sql`
+    insert into cash_flow_transactions (
+      id, pay_period, transaction_date, merchant, amount, category,
+      subcategory, expense_type, account, paid, paid_date, notes, updated_at
+    )
+    values (
+      ${transaction.id}, ${transaction.payPeriod}, ${transaction.date},
+      ${transaction.merchant}, ${transaction.amount}, ${transaction.category},
+      ${transaction.subcategory}, ${transaction.expenseType}, ${transaction.account},
+      ${transaction.paid}, ${null}, ${transaction.paidDate || transaction.notes}, now()
+    )
+    on conflict (id) do update set
+      pay_period = excluded.pay_period,
+      transaction_date = excluded.transaction_date,
+      merchant = excluded.merchant,
+      amount = excluded.amount,
+      category = excluded.category,
+      subcategory = excluded.subcategory,
+      expense_type = excluded.expense_type,
+      account = excluded.account,
+      paid = excluded.paid,
+      paid_date = excluded.paid_date,
+      notes = excluded.notes,
+      updated_at = now()
+  `;
+}
+
+async function saveRecurringExpense(sql: Sql, expense: RecurringExpense) {
+  await sql`
+    insert into cash_flow_recurring_expenses (
+      id, period_slot, merchant, amount, category, subcategory,
+      expense_type, account, updated_at
+    )
+    values (
+      ${expense.id}, ${expense.periodSlot}, ${expense.merchant}, ${expense.amount},
+      ${expense.category}, ${expense.subcategory}, 'Planned', ${expense.account}, now()
+    )
+    on conflict (id) do update set
+      period_slot = excluded.period_slot,
+      merchant = excluded.merchant,
+      amount = excluded.amount,
+      category = excluded.category,
+      subcategory = excluded.subcategory,
+      expense_type = excluded.expense_type,
+      account = excluded.account,
+      updated_at = now()
+  `;
+}
+
+function isValidTransaction(value: unknown): value is Transaction {
   if (!value || typeof value !== "object") return false;
+  const transaction = value as Partial<Transaction>;
 
-  const state = value as Partial<AppState>;
-  if (!/^\d{4}-\d{2}$/.test(state.activeMonth ?? "")) return false;
-  if (typeof state.activePayPeriod !== "string") return false;
-  if (!Array.isArray(state.transactions) || !Array.isArray(state.recurringExpenses)) return false;
+  return typeof transaction.id === "string" && transaction.id.length > 0
+    && typeof transaction.merchant === "string" && transaction.merchant.length > 0
+    && Number.isFinite(transaction.amount)
+    && typeof transaction.payPeriod === "string"
+    && /^\d{4}-\d{2}-\d{2}$/.test(transaction.date ?? "")
+    && typeof transaction.category === "string"
+    && typeof transaction.subcategory === "string"
+    && typeof transaction.expenseType === "string"
+    && typeof transaction.account === "string"
+    && typeof transaction.paid === "boolean";
+}
 
-  const transactionIds = new Set<string>();
-  for (const transaction of state.transactions) {
-    if (!transaction || typeof transaction !== "object") return false;
-    if (!transaction.id || transactionIds.has(transaction.id)) return false;
-    if (!Number.isFinite(transaction.amount) || !/^\d{4}-\d{2}-\d{2}$/.test(transaction.date)) return false;
-    transactionIds.add(transaction.id);
-  }
+function isValidRecurringExpense(value: unknown): value is RecurringExpense {
+  if (!value || typeof value !== "object") return false;
+  const expense = value as Partial<RecurringExpense>;
 
-  const recurringIds = new Set<string>();
-  for (const expense of state.recurringExpenses) {
-    if (!expense || typeof expense !== "object") return false;
-    if (!expense.id || recurringIds.has(expense.id)) return false;
-    if (!Number.isFinite(expense.amount) || !["PP1", "PP2"].includes(expense.periodSlot)) return false;
-    recurringIds.add(expense.id);
-  }
+  return typeof expense.id === "string" && expense.id.length > 0
+    && typeof expense.merchant === "string" && expense.merchant.length > 0
+    && Number.isFinite(expense.amount)
+    && (expense.periodSlot === "PP1" || expense.periodSlot === "PP2")
+    && typeof expense.category === "string"
+    && typeof expense.subcategory === "string"
+    && typeof expense.account === "string";
+}
 
-  return true;
+function isValidSettings(value: unknown): value is Pick<AppState, "activeMonth" | "activePayPeriod"> {
+  if (!value || typeof value !== "object") return false;
+  const settings = value as Partial<AppState>;
+
+  return /^\d{4}-\d{2}$/.test(settings.activeMonth ?? "")
+    && typeof settings.activePayPeriod === "string";
+}
+
+export async function PUT() {
+  return NextResponse.json(
+    { configured: true, error: "Full-state replacement is disabled. Save rows individually." },
+    { status: 405, headers: { Allow: "GET, POST, PATCH, DELETE" } }
+  );
 }
 
 function isoDate(value: unknown) {
