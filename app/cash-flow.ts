@@ -67,7 +67,7 @@ export const categorySubcategories: Record<string, string[]> = {
 
 export const categories = Object.keys(categorySubcategories);
 export const expenseTypes = ["Planned", "Necessary", "Regret", "Impulse", "Worth It"];
-export const startingBalance = -642.74;
+export const startingBalance = 5205.43;
 
 export const defaultRecurringExpenses: RecurringExpense[] = [
   recurring("PP1", "Netrist Paycheck", 2986.2, "Income", "Income", "Chase Checking"),
