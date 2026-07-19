@@ -848,17 +848,59 @@ td.actions-column {
 
 .recurring-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) 120px 140px 150px 140px auto;
+  grid-template-columns: minmax(180px, 1fr) 120px minmax(190px, auto) auto;
   gap: 10px;
-  align-items: end;
-  padding: 12px;
+  align-items: center;
+  padding: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
 }
 
 .recurring-delete {
-  align-self: end;
+  align-self: center;
+}
+
+.recurring-amount-input {
+  text-align: right;
+}
+
+.recurring-meta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.recurring-meta span,
+.recurring-meta small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recurring-meta span {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.recurring-meta small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.recurring-add-details {
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.recurring-add-details > summary {
+  padding: 10px 12px;
+  color: var(--accent-strong);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 850;
 }
 
 .recurring-add-form {
@@ -1399,7 +1441,11 @@ td.actions-column {
   }
 
   .recurring-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
     padding: 14px;
+    -webkit-overflow-scrolling: touch;
   }
 
   .recurring-list {
@@ -1409,7 +1455,36 @@ td.actions-column {
   }
 
   .recurring-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) 104px 36px;
+    gap: 6px;
+    padding: 7px;
+  }
+
+  .recurring-row input {
+    min-height: 38px;
+    padding: 7px 8px;
+    font-size: 16px;
+  }
+
+  .recurring-meta {
+    grid-column: 1 / 3;
+    grid-row: 2;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 0 2px;
+  }
+
+  .recurring-meta small::before {
+    content: "• ";
+  }
+
+  .recurring-delete {
+    grid-column: 3;
+    grid-row: 1;
+    width: 36px;
+    min-width: 36px;
+    min-height: 38px;
   }
 
   .recurring-date-field,

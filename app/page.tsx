@@ -811,39 +811,32 @@ export default function TransactionsPage() {
                     <div className="recurring-group-list">
                       {recurringExpenseGroups[periodSlot].map((expense) => (
                         <article className="recurring-row" key={expense.id}>
-                          <label>
-                            Name
-                            <input value={expense.merchant} onChange={(event) => updateRecurringExpense(expense.id, "merchant", event.target.value)} />
-                          </label>
-                          <label>
-                            Amount
-                            <input type="number" step="0.01" value={expense.amount} onChange={(event) => updateRecurringExpense(expense.id, "amount", Number(event.target.value))} />
-                          </label>
-                          <label>
-                            Category
-                            <select value={expense.category} onChange={(event) => updateRecurringExpense(expense.id, "category", event.target.value)}>
-                              {categories.map((category) => <option key={category}>{category}</option>)}
-                            </select>
-                          </label>
-                          <label>
-                            Subcategory
-                            <select value={expense.subcategory} onChange={(event) => updateRecurringExpense(expense.id, "subcategory", event.target.value)}>
-                              {(categorySubcategories[expense.category] ?? []).map((subcategory) => <option key={subcategory}>{subcategory}</option>)}
-                            </select>
-                          </label>
-                          <label>
-                            Account
-                            <select value={expense.account} onChange={(event) => updateRecurringExpense(expense.id, "account", event.target.value)}>
-                              {accounts.map((account) => <option key={account}>{account}</option>)}
-                            </select>
-                          </label>
-                          <button type="button" className="delete-button recurring-delete" onClick={() => deleteRecurringExpense(expense.id)}>x</button>
+                          <input
+                            className="recurring-name-input"
+                            aria-label={`${expense.merchant} title`}
+                            value={expense.merchant}
+                            onChange={(event) => updateRecurringExpense(expense.id, "merchant", event.target.value)}
+                          />
+                          <input
+                            className="recurring-amount-input"
+                            aria-label={`${expense.merchant} amount`}
+                            type="number"
+                            step="0.01"
+                            value={expense.amount}
+                            onChange={(event) => updateRecurringExpense(expense.id, "amount", Number(event.target.value))}
+                          />
+                          <div className="recurring-meta">
+                            <span>{expense.category}/{expense.subcategory}</span>
+                            <small>{expense.account}</small>
+                          </div>
+                          <button type="button" aria-label={`Delete ${expense.merchant}`} className="delete-button recurring-delete" onClick={() => deleteRecurringExpense(expense.id)}>x</button>
                         </article>
                       ))}
                     </div>
-                    <form className="recurring-add-form" onSubmit={(event) => addRecurringExpense(event, periodSlot)}>
-                      <h3>Add {periodSlot} recurring item</h3>
-                      <div className="field-grid">
+                    <details className="recurring-add-details">
+                      <summary>Add recurring item</summary>
+                      <form className="recurring-add-form" onSubmit={(event) => addRecurringExpense(event, periodSlot)}>
+                        <div className="field-grid">
                         <label>
                           Name
                           <input name="merchant" required />
@@ -875,9 +868,10 @@ export default function TransactionsPage() {
                             {accounts.map((account) => <option key={account}>{account}</option>)}
                           </select>
                         </label>
-                      </div>
-                      <button className="primary-button" type="submit">Save {periodSlot} item</button>
-                    </form>
+                        </div>
+                        <button className="primary-button" type="submit">Save {periodSlot} item</button>
+                      </form>
+                    </details>
                   </section>
                 ))}
               </div>
